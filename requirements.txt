@@ -1,0 +1,6 @@
+Flask==1.0.2
+rethinkdb==2.4.1
+flask_httpauth==3.3.0
+Flask-Cors==3.0.8
+python-logstash
+gunicorn[gthread]
