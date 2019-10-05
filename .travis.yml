@@ -10,8 +10,8 @@ services:
   - docker
 
 before_install:
-  - docker build -t avalon-front .
-  - docker tag avalon-front $DOCKER_USERNAME/avalon-front:master
+  - docker build -t avalon-back .
+  - docker tag avalon-back $DOCKER_USERNAME/avalon-back:master
 
 after_script:
   - docker images
@@ -21,6 +21,6 @@ before_deploy:
 
 deploy:
   provider: script
-  script: docker push sopretty/avalon-front
+  script: docker push sopretty/avalon-back
   on:
     branch: master
