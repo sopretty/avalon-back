@@ -10,13 +10,17 @@ import rethinkdb as r
 from flask import Blueprint, Flask, jsonify, make_response, request, abort, send_file, Response, current_app
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import CORS
 
 
 AVALON_BLUEPRINT = Blueprint('avalon', __name__)
+CORS(AVALON_BLUEPRINT)
+
 AUTH = HTTPBasicAuth()
 
 USERS = {"mathieu": generate_password_hash("lebeaugosse"),
          "romain": generate_password_hash("lala")}
+
 
 
 @AUTH.verify_password

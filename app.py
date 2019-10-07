@@ -8,14 +8,12 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask
-from flask_cors import CORS
 
 from pylib import AVALON_BLUEPRINT
 
 
 APP = Flask(__name__)
 APP.register_blueprint(AVALON_BLUEPRINT)
-CORS(APP)
 
 
 if __name__ == '__main__':
