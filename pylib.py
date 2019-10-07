@@ -6,30 +6,41 @@
 import os
 from random import shuffle, choice
 
+import rethinkdb as r
 from flask import Blueprint, Flask, jsonify, make_response, request, abort, send_file, Response, current_app
+from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# from app import auth
-import rethinkdb as r
 
-
-avalon_blueprint = Blueprint('avalon', __name__)
-auth_blueprint = Blueprint('auth', __name__)
+AVALON_BLUEPRINT = Blueprint('avalon', __name__)
+AUTH = HTTPBasicAuth()
 
 USERS = {"mathieu": generate_password_hash("lebeaugosse"),
          "romain": generate_password_hash("lala")}
 
 
+@AUTH.verify_password
+def verify_password(username, password):
+    if username in USERS:
+        return check_password_hash(USERS.get(username), password)
+    return False
 
 
-@avalon_blueprint.before_request
+@AVALON_BLUEPRINT.route('/')
+@AUTH.login_required
+def index():
+    return "Hello, %s!" % AUTH.username()
+
+
+@AVALON_BLUEPRINT.before_request
 def before_first_request_func():
     """This function opens the connection to the database."""
 
     r.RethinkDB().connect("rethinkdb", 28015).repl()
 
 
-@avalon_blueprint.route('/restart_bdd', methods=['PUT'])
+@AVALON_BLUEPRINT.route('/restart_bdd', methods=['PUT'])
+#@AUTH.login_required
 def restart_bdd():
     """
     This function deletes all tables in the post request and initializes them.
@@ -77,7 +88,7 @@ def restart_bdd():
     return jsonify({"request": "succeeded"})
 
 
-@avalon_blueprint.route('/view/<table_name>', methods=['GET'])
+@AVALON_BLUEPRINT.route('/view/<table_name>', methods=['GET'])
 def view(table_name):
     """
     This function visualize a table depending on the input <table_name>.
@@ -133,7 +144,7 @@ def view(table_name):
     return jsonify(response)
 
 
-@avalon_blueprint.route('/games', methods=['PUT'])
+@AVALON_BLUEPRINT.route('/games', methods=['PUT'])
 def add_roles():
     """
     This function adds rules and roles to players randomly.
@@ -240,7 +251,7 @@ def add_roles():
     return jsonify({"players": list_players, "id": game_id})
 
 
-@avalon_blueprint.route('/<game_id>/mp3', methods=['GET'])
+@AVALON_BLUEPRINT.route('/<game_id>/mp3', methods=['GET'])
 def post_mp3(game_id):
     """This function creates the mp3file depending on roles of players.
         - method: GET
@@ -260,7 +271,7 @@ def post_mp3(game_id):
     return send_file("resources/roles.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
 
 
-@avalon_blueprint.route('/<game_id>/board', methods=['GET'])
+@AVALON_BLUEPRINT.route('/<game_id>/board', methods=['GET'])
 def board(game_id):
     """This function visualize the board of the <game_id>.
         - method: GET
@@ -301,7 +312,7 @@ def board(game_id):
     return jsonify(dict_quest)
 
 
-@avalon_blueprint.route('/<game_id>/mission', methods=['POST'])
+@AVALON_BLUEPRINT.route('/<game_id>/mission', methods=['POST'])
 def mission(game_id):
     """This function sends new mission of the game <game_id>.
         - method: POST
@@ -387,7 +398,7 @@ def mission(game_id):
     return jsonify({"request": "succeeded"})
 
 
-@avalon_blueprint.route('/<game_id>/vote', methods=['POST'])
+@AVALON_BLUEPRINT.route('/<game_id>/vote', methods=['POST'])
 def vote(game_id):
     """This function sends new mission of the game <game_id>.
         - method: POST

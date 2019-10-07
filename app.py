@@ -4,23 +4,19 @@
 """This script is the RESTful web service used in Avalon"""
 
 import argparse
-
-from flask import Flask
-from flask_cors import CORS
-from flask_httpauth import HTTPBasicAuth
-
-from pylib import avalon_blueprint
-
 import logging
 from logging.handlers import RotatingFileHandler
 
+from flask import Flask
+from flask_cors import CORS
 
-app = Flask(__name__)
-CORS(app)
+from pylib import AVALON_BLUEPRINT
 
-auth = HTTPBasicAuth()
 
-app.register_blueprint(avalon_blueprint)
+APP = Flask(__name__)
+APP.register_blueprint(AVALON_BLUEPRINT)
+CORS(APP)
+
 
 if __name__ == '__main__':
 
@@ -35,9 +31,9 @@ if __name__ == '__main__':
     # parse arguments
     ARGS = PARSER.parse_args()
 
-    handler = RotatingFileHandler('foo.log', maxBytes=10000, backupCount=1)
-    handler.setLevel(logging.INFO)
-    app.logger.addHandler(handler)
+    HANDLER = RotatingFileHandler('foo.log', maxBytes=10000, backupCount=1)
+    HANDLER.setLevel(logging.INFO)
+    APP.logger.addHandler(HANDLER)
 
     # Start the RESTful web service used in Avalon
-    app.run(host=ARGS.host, port=ARGS.port, debug=True)
+    APP.run(host=ARGS.host, port=ARGS.port, debug=True)
