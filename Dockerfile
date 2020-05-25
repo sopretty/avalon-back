@@ -17,7 +17,7 @@ RUN /root/miniconda3/bin/conda install pip && \
     /root/miniconda3/bin/pip install --upgrade setuptools
 
 # installation of dependencies
-RUN apt-get -y update && apt-get install -y unzip gfortran openssh-server
+RUN apt-get -y update && apt-get install -y unzip gfortran openssh-server ffmpeg
 
 
 RUN mkdir Avalon

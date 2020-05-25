@@ -4,6 +4,7 @@ import os
 from random import shuffle, choice
 
 import rethinkdb as r
+from pydub import AudioSegment
 from flask import Blueprint, Flask, jsonify, make_response, request, abort, send_file, Response, current_app
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -263,16 +264,15 @@ def post_mp3(game_id):
         - response example: response.mpga
     """
 
-    # # find role of each player
-    # list_roles = []
-    # for player_id in bdd_get_value("games", game_id, "players"):
-    #     list_roles.append(list(r.RethinkDB().table("players").filter({"id": player_id}).run())[0]["role"])
+    # find role of each player
+    list_roles = []
+    for player_id in bdd_get_value("games", game_id, "players"):
+        list_roles.append(list(r.RethinkDB().table("players").filter({"id": player_id}).run())[0]["role"])
 
-    # # create mp3file
-    # create_mp3(list_roles)
+    # create mp3file
+    create_mp3(list_roles)
 
-    # return send_file("resources/roles.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
-    return send_file("resources/test_song.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
+    return send_file("resources/roles.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
 
 
 @AVALON_BLUEPRINT.route('/<game_id>/board', methods=['GET'])
@@ -515,30 +515,24 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
 def create_mp3(list_roles):
     """Create mp3 file depending on roles in the game."""
 
-    list_to_merge = ["init.mp3", "serv_mord.mp3"]
+    list_mp3 = ["init.mp3", "serv_mord.mp3"]
     if "oberon" in list_roles:
-        list_to_merge.append("oberon.mp3")
-    list_to_merge.append("red_identi.mp3")
+        list_mp3.append("oberon.mp3")
+    list_mp3.append("red_identi.mp3")
 
     if "morgan" in list_roles and "perceval" in list_roles:
-        list_to_merge.append("add_per_mor.mp3")
+        list_mp3.append("add_per_mor.mp3")
 
-    list_to_merge.append("serv_mord.mp3")
+    list_mp3.append("serv_mord.mp3")
     if "mordred" in list_roles:
-        list_to_merge.append("mordred.mp3")
-    list_to_merge.extend(["merlin_identi.mp3", "end.mp3"])
+        list_mp3.append("mordred.mp3")
+    list_mp3.extend(["merlin_identi.mp3", "end.mp3"])
 
-    str_command = "cat "
-    for mp3 in list_to_merge:
-        str_command += "resources/"+mp3+" "
-    str_command += " > resources/roles.mp3"
+    mp3_combined = AudioSegment.empty()
+    for mp3 in list_mp3:
+        mp3_combined += AudioSegment.from_mp3("resources/{}".format(mp3))
 
-    os.system(str_command)
-    mp3_file = open('./resources/roles.mp3', 'rb')
-    #os.system("rm -f /resources/roles.mp3")
-
-    return mp3_file
-
+    mp3_combined.export("resources/roles.mp3", format="mp3")
 
 
 ########################################################################################################################
