@@ -22,7 +22,6 @@ USERS = {
 }
 
 
-
 @AUTH.verify_password
 def verify_password(username, password):
     if username in USERS:
@@ -193,16 +192,13 @@ def add_roles():
     """
 
     # create new game in table games
-    insert = r.RethinkDB().table("games").insert([{"players": [], "rules": {}}]).run()
+    insert = r.RethinkDB().table("games").insert([{"players": []}]).run()
     game_id = insert["generated_keys"][0]
 
     # find rules
     rules = list(r.RethinkDB().table("rules").filter({"nb_player": len(request.json["names"])}).run())[0]
     del rules["id"]
     del rules["nb_player"]
-
-    # update rules
-    bdd_update_value("games", game_id, "rules", rules)
 
     # add roles to players
     players = roles_and_players(request.json, rules["red"], rules["blue"])
@@ -215,16 +211,9 @@ def add_roles():
     # update players
     bdd_update_value("games", game_id, "players", list_id_players)
 
-    # update nb_player_to_send
-    bdd_update_value("games", game_id, "nb_player_to_send", {key: val for key, val in rules.items()\
-                                                             if key[:5] == "quest"})
-
-    # update nb_echec_to_fail
-    bdd_update_value("games", game_id, "nb_echec_to_fail", {key: val for key, val in rules.items()\
-                                                            if key[:5] == "echec"})
-
-    # update quest_result
-    bdd_update_value("games", game_id, "quest_result", ["", "", "", "", ""])
+    # update quests
+    list_board = [{"quest": rules["quest{}".format(ind)], "fail": rules["echec{}".format(ind)]} for ind in range(1, 6)]
+    bdd_update_value("games", game_id, "quests", list_board)
 
     # update nb_mission_unsend
     bdd_update_value("games", game_id, "nb_mission_unsend", 0)
@@ -306,13 +295,10 @@ def board(game_id):
 
     # find board of the <game_id>
     return jsonify({
-        "nb_mission_unsend": bdd_get_value("games", game_id, "nb_mission_unsend"),
         "current_id_player": bdd_get_value("games", game_id, "current_id_player"),
-        "current_ind_player": bdd_get_value("games", game_id, "current_ind_player"),
-        "current_name_player": bdd_get_value("games", game_id, "current_name_player"),
+        "nb_mission_unsend": bdd_get_value("games", game_id, "nb_mission_unsend"),
         "current_quest": bdd_get_value("games", game_id, "current_quest"),
-        "nb_player_to_send": bdd_get_value("games", game_id, "nb_player_to_send"),
-        "nb_echec_to_fail": bdd_get_value("games", game_id, "nb_echec_to_fail")
+        "quests": bdd_get_value("games", game_id, "quests")
     })
 
 
@@ -351,16 +337,9 @@ def mission(game_id):
 
     try:
         if request.json["status"] not in ["unsend", "send"]:
-            return jsonify({"request": "unsucceeded",
-                            "message": "'status' is not 'send' or 'unsend'"})
+            return jsonify({"request": "unsucceeded", "message": "'status' is not 'send' or 'unsend'"})
     except KeyError:
-        return jsonify({"request": "unsucceeded",
-                        "message": "'status' is missing"})
-
-    # ----> check current_quest
-    # ----> check nb_mission_unsend
-    # ----> check nb_player in payload == quest_i
-
+        return jsonify({"request": "unsucceeded", "message": "'status' is missing"})
 
     # update current_ind_player
     nb_player = len(bdd_get_value("games", game_id, "players"))
@@ -379,12 +358,10 @@ def mission(game_id):
     if request.json["status"] == "send":
 
         # update nb_mission_unsend
-        nb_mission_unsend = 0
-        bdd_update_value("games", game_id, "nb_mission_unsend", nb_mission_unsend)
+        bdd_update_value("games", game_id, "nb_mission_unsend", 0)
 
         # update current_quest
-        current_quest = bdd_get_value("games", game_id, "current_ind_player")
-        bdd_update_value("games", game_id, "current_quest", current_quest + 1)
+        bdd_update_value("games", game_id, "current_quest", bdd_get_value("games", game_id, "current_quest") + 1)
 
         # find players
         list_players = []
@@ -396,8 +373,7 @@ def mission(game_id):
         return jsonify({"players": list_players})
 
     # update nb_mission_unsend
-    nb_mission_unsend = bdd_get_value("games", game_id, "nb_mission_unsend") + 1
-    bdd_update_value("games", game_id, "nb_mission_unsend", nb_mission_unsend)
+    bdd_update_value("games", game_id, "nb_mission_unsend", bdd_get_value("games", game_id, "nb_mission_unsend") + 1)
 
     return jsonify({"request": "succeeded"})
 
@@ -432,21 +408,18 @@ def vote(game_id):
     list_vote = request.json["vote"]
     shuffle(list_vote)
 
-    dict_nb_echec_to_fail = bdd_get_value("games", game_id, "nb_echec_to_fail")
-    nb_echec_to_fail = dict_nb_echec_to_fail["echec"+str(bdd_get_value("games", game_id, "current_quest"))]
+    list_board = bdd_get_value("games", game_id, "quests")
+    nb_echec_to_fail = list_board[bdd_get_value("games", game_id, "current_quest")-2]["fail"]
 
-    result = "SUCCESS"
+    result = True
     if list_vote.count("FAIL") >= nb_echec_to_fail:
-        result = "FAIL"
+        result = False
 
     # update quest_result
-    quest_result = bdd_get_value("games", game_id, "quest_result")
-    quest_result[bdd_get_value("games", game_id, "current_quest") - 1] = result
-    bdd_update_value("games", game_id, "quest_result", quest_result)
+    list_board[bdd_get_value("games", game_id, "current_quest")-2]["status"] = result
+    bdd_update_value("games", game_id, "quests", list_board)
 
-
-    return jsonify({"vote": list_vote,
-                    "result": result})
+    return jsonify({"vote": list_vote, "result": result})
 
 
 
