@@ -35,8 +35,44 @@ def index():
     return "Hello, %s!" % AUTH.username()
 
 
+@AVALON_BLUEPRINT.before_app_first_request
+def before_app_first_request_func():
+    """Create mp3 all files depending on roles in the game."""
+
+    list_all_roles = [
+        ["morgan"],
+        ["oberon"],
+        ["mordred"],
+        ["morgan", "oberon"],
+        ["morgan", "mordred"],
+        ["oberon", "mordred"],
+        ["morgan", "oberon", "mordred"]
+    ]
+
+    for list_roles in list_all_roles:
+
+        list_mp3 = ["init.mp3", "serv_mord.mp3"]
+        if "oberon" in list_roles:
+            list_mp3.append("oberon.mp3")
+        list_mp3.append("red_identi.mp3")
+
+        if "morgan" in list_roles:
+            list_mp3.append("add_per_mor.mp3")
+
+        list_mp3.append("serv_mord.mp3")
+        if "mordred" in list_roles:
+            list_mp3.append("mordred.mp3")
+        list_mp3.extend(["merlin_identi.mp3", "end.mp3"])
+
+        mp3_combined = AudioSegment.empty()
+        for mp3 in list_mp3:
+            mp3_combined += AudioSegment.from_mp3("resources/{}".format(mp3))
+
+        mp3_combined.export("resources/{}.mp3".format('-'.join(sorted(list_roles))), format="mp3")
+
+
 @AVALON_BLUEPRINT.before_request
-def before_first_request_func():
+def before_request_func():
     """This function opens the connection to the database."""
 
     r.RethinkDB().connect("rethinkdb", 28015).repl()
@@ -218,14 +254,13 @@ def add_roles():
         "current_quest": 1,
         "nb_mission_unsend": 0
     }]).run()
-    game_id = insert["generated_keys"][0]
 
     # find players to return
     list_players = []
     for player_id in list_id_players:
         list_players.append(list(r.RethinkDB().table("players").get_all(player_id).run())[0])
 
-    return jsonify({"players": list_players, "id": game_id})
+    return jsonify({"players": list_players, "id": insert["generated_keys"][0]})
 
 
 @AVALON_BLUEPRINT.route('/<game_id>/mp3', methods=['GET'])
@@ -242,8 +277,9 @@ def post_mp3(game_id):
     for player_id in bdd_get_value("games", game_id, "players"):
         list_roles.append(list(r.RethinkDB().table("players").filter({"id": player_id}).run())[0]["role"])
 
-    # create mp3file
-    name_roles = create_mp3(list_roles)
+    name_roles = '-'.join(sorted(
+        [role for role in list_roles if role not in ("assassin", "blue", "merlin", "perceval", "red")]
+    ))
 
     return send_file("resources/{}.mp3".format(name_roles), attachment_filename='roles.mp3', mimetype='audio/mpeg')
 
@@ -467,36 +503,6 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                                  "team": "red", "role": role})
 
     return list_players
-
-
-def create_mp3(list_roles):
-    """Create mp3 file depending on roles in the game."""
-
-    list_roles = sorted([role for role in list_roles if role not in ("blue", "red")])
-    name_roles = '-'.join(list_roles)
-
-    if not Path("resources/{}.mp3".format(name_roles)).exists():
-
-        list_mp3 = ["init.mp3", "serv_mord.mp3"]
-        if "oberon" in list_roles:
-            list_mp3.append("oberon.mp3")
-        list_mp3.append("red_identi.mp3")
-
-        if "morgan" in list_roles and "perceval" in list_roles:
-            list_mp3.append("add_per_mor.mp3")
-
-        list_mp3.append("serv_mord.mp3")
-        if "mordred" in list_roles:
-            list_mp3.append("mordred.mp3")
-        list_mp3.extend(["merlin_identi.mp3", "end.mp3"])
-
-        mp3_combined = AudioSegment.empty()
-        for mp3 in list_mp3:
-            mp3_combined += AudioSegment.from_mp3("resources/{}".format(mp3))
-
-        mp3_combined.export("resources/{}.mp3".format(name_roles), format="mp3")
-
-    return name_roles
 
 
 ########################################################################################################################
