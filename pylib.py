@@ -191,10 +191,6 @@ def add_roles():
                             }
     """
 
-    # create new game in table games
-    insert = r.RethinkDB().table("games").insert([{"players": []}]).run()
-    game_id = insert["generated_keys"][0]
-
     # find rules
     rules = list(r.RethinkDB().table("rules").filter({"nb_player": len(request.json["names"])}).run())[0]
     del rules["id"]
@@ -208,33 +204,21 @@ def add_roles():
     for player in players:
         list_id_players.append(r.RethinkDB().table("players").insert(player).run()["generated_keys"][0])
 
-    # update players
-    bdd_update_value("games", game_id, "players", list_id_players)
-
-    # update quests
-    list_board = [{"quest": rules["quest{}".format(ind)], "fail": rules["echec{}".format(ind)]} for ind in range(1, 6)]
-    bdd_update_value("games", game_id, "quests", list_board)
-
-    # update nb_mission_unsend
-    bdd_update_value("games", game_id, "nb_mission_unsend", 0)
-
-    # update current_ind_player
     ind = choice(range(len(request.json["names"])))
-    bdd_update_value("games", game_id, "current_ind_player", ind)
 
-    # update current_id_player
-    current_id_player = list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["id"]
-    bdd_update_value("games", game_id, "current_id_player", current_id_player)
-
-    # update current_name_player
-    current_name_player = list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["name"]
-    bdd_update_value("games", game_id, "current_name_player", current_name_player)
-
-    # update current_quest
-    bdd_update_value("games", game_id, "current_quest", 1)
-
-    # update nb_mission_unsend
-    bdd_update_value("games", game_id, "nb_mission_unsend", 0)
+    # create new game in table games
+    insert = r.RethinkDB().table("games").insert([{
+        "players": list_id_players,
+        "quests": [
+            {"quest": rules["quest{}".format(ind)], "fail": rules["echec{}".format(ind)]} for ind in range(1, 6)
+        ],
+        "current_ind_player": ind,
+        "current_id_player": list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["id"],
+        "current_name_player": list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["name"],
+        "current_quest": 1,
+        "nb_mission_unsend": 0
+    }]).run()
+    game_id = insert["generated_keys"][0]
 
     # find players to return
     list_players = []
