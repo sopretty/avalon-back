@@ -9,7 +9,7 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 
-from pylib import AVALON_BLUEPRINT
+from pylib import AVALON_BLUEPRINT, create_mp3
 
 
 APP = Flask(__name__)
@@ -32,6 +32,8 @@ if __name__ == '__main__':
     HANDLER = RotatingFileHandler('foo.log', maxBytes=10000, backupCount=1)
     HANDLER.setLevel(logging.INFO)
     APP.logger.addHandler(HANDLER)
+
+    create_mp3()
 
     # Start the RESTful web service used in Avalon
     APP.run(host=ARGS.host, port=ARGS.port, debug=True)

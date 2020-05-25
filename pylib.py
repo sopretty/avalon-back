@@ -35,8 +35,7 @@ def index():
     return "Hello, %s!" % AUTH.username()
 
 
-@AVALON_BLUEPRINT.before_app_first_request
-def before_app_first_request_func():
+def create_mp3():
     """Create mp3 all files depending on roles in the game."""
 
     list_all_roles = [
