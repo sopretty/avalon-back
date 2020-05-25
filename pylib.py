@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# author: romain.121@hotmail.fr
-
 """This functions are used is the RESTful web service of Avalon"""
 
 import os
@@ -18,8 +15,10 @@ CORS(AVALON_BLUEPRINT)
 
 AUTH = HTTPBasicAuth()
 
-USERS = {"mathieu": generate_password_hash("lebeaugosse"),
-         "romain": generate_password_hash("lala")}
+USERS = {
+    "mathieu": generate_password_hash("lebeaugosse"),
+    "romain": generate_password_hash("lala")
+}
 
 
 
@@ -95,7 +94,7 @@ def restart_bdd():
 @AVALON_BLUEPRINT.route('/view/<table_name>', methods=['GET'])
 def view(table_name):
     """
-    This function visualize a table depending on the input <table_name>.
+    This function visualizes a table depending on the input <table_name>.
         - method: GET
         - route: /view/<table_name> (table_name is rules, games and players)
         - payload example:
@@ -264,15 +263,16 @@ def post_mp3(game_id):
         - response example: response.mpga
     """
 
-    # find role of each player
-    list_roles = []
-    for player_id in bdd_get_value("games", game_id, "players"):
-        list_roles.append(list(r.RethinkDB().table("players").filter({"id": player_id}).run())[0]["role"])
+    # # find role of each player
+    # list_roles = []
+    # for player_id in bdd_get_value("games", game_id, "players"):
+    #     list_roles.append(list(r.RethinkDB().table("players").filter({"id": player_id}).run())[0]["role"])
 
-    # create mp3file
-    create_mp3(list_roles)
+    # # create mp3file
+    # create_mp3(list_roles)
 
-    return send_file("resources/roles.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
+    # return send_file("resources/roles.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
+    return send_file("resources/test_song.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
 
 
 @AVALON_BLUEPRINT.route('/<game_id>/board', methods=['GET'])
@@ -305,15 +305,15 @@ def board(game_id):
     """
 
     # find board of the <game_id>
-    dict_quest = {"nb_mission_unsend": bdd_get_value("games", game_id, "nb_mission_unsend"),
-                  "current_id_player": bdd_get_value("games", game_id, "current_id_player"),
-                  "current_ind_player": bdd_get_value("games", game_id, "current_ind_player"),
-                  "current_name_player": bdd_get_value("games", game_id, "current_name_player"),
-                  "current_quest": bdd_get_value("games", game_id, "current_quest"),
-                  "nb_player_to_send": bdd_get_value("games", game_id, "nb_player_to_send"),
-                  "nb_echec_to_fail": bdd_get_value("games", game_id, "nb_echec_to_fail")}
-
-    return jsonify(dict_quest)
+    return jsonify({
+        "nb_mission_unsend": bdd_get_value("games", game_id, "nb_mission_unsend"),
+        "current_id_player": bdd_get_value("games", game_id, "current_id_player"),
+        "current_ind_player": bdd_get_value("games", game_id, "current_ind_player"),
+        "current_name_player": bdd_get_value("games", game_id, "current_name_player"),
+        "current_quest": bdd_get_value("games", game_id, "current_quest"),
+        "nb_player_to_send": bdd_get_value("games", game_id, "nb_player_to_send"),
+        "nb_echec_to_fail": bdd_get_value("games", game_id, "nb_echec_to_fail")
+    })
 
 
 @AVALON_BLUEPRINT.route('/<game_id>/mission', methods=['POST'])
