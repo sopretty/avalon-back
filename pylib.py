@@ -1,6 +1,6 @@
 """This functions are used is the RESTful web service of Avalon"""
 
-import os
+from pathlib import Path
 from random import shuffle, choice
 
 import rethinkdb as r
@@ -259,9 +259,9 @@ def post_mp3(game_id):
         list_roles.append(list(r.RethinkDB().table("players").filter({"id": player_id}).run())[0]["role"])
 
     # create mp3file
-    create_mp3(list_roles)
+    name_roles = create_mp3(list_roles)
 
-    return send_file("resources/roles.mp3", attachment_filename='roles.mp3', mimetype='audio/mpeg')
+    return send_file("resources/{}.mp3".format(name_roles), attachment_filename='roles.mp3', mimetype='audio/mpeg')
 
 
 @AVALON_BLUEPRINT.route('/<game_id>/board', methods=['GET'])
@@ -488,24 +488,31 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
 def create_mp3(list_roles):
     """Create mp3 file depending on roles in the game."""
 
-    list_mp3 = ["init.mp3", "serv_mord.mp3"]
-    if "oberon" in list_roles:
-        list_mp3.append("oberon.mp3")
-    list_mp3.append("red_identi.mp3")
+    list_roles = sorted([role for role in list_roles if role not in ("blue", "red")])
+    name_roles = '-'.join(list_roles)
 
-    if "morgan" in list_roles and "perceval" in list_roles:
-        list_mp3.append("add_per_mor.mp3")
+    if not Path("resources/{}.mp3".format(name_roles)).exists():
 
-    list_mp3.append("serv_mord.mp3")
-    if "mordred" in list_roles:
-        list_mp3.append("mordred.mp3")
-    list_mp3.extend(["merlin_identi.mp3", "end.mp3"])
+        list_mp3 = ["init.mp3", "serv_mord.mp3"]
+        if "oberon" in list_roles:
+            list_mp3.append("oberon.mp3")
+        list_mp3.append("red_identi.mp3")
 
-    mp3_combined = AudioSegment.empty()
-    for mp3 in list_mp3:
-        mp3_combined += AudioSegment.from_mp3("resources/{}".format(mp3))
+        if "morgan" in list_roles and "perceval" in list_roles:
+            list_mp3.append("add_per_mor.mp3")
 
-    mp3_combined.export("resources/roles.mp3", format="mp3")
+        list_mp3.append("serv_mord.mp3")
+        if "mordred" in list_roles:
+            list_mp3.append("mordred.mp3")
+        list_mp3.extend(["merlin_identi.mp3", "end.mp3"])
+
+        mp3_combined = AudioSegment.empty()
+        for mp3 in list_mp3:
+            mp3_combined += AudioSegment.from_mp3("resources/{}".format(mp3))
+
+        mp3_combined.export("resources/{}.mp3".format(name_roles), format="mp3")
+
+    return name_roles
 
 
 ########################################################################################################################
