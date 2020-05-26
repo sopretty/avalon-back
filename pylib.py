@@ -322,44 +322,8 @@ def board(game_id):
     })
 
 
-@AVALON_BLUEPRINT.route('/<game_id>/mission', methods=['POST'])
-def mission(game_id):
-    """This function sends new mission of the game <game_id>.
-        - method: POST
-        - route: /<game_id>/mission
-        - payload example1: {
-                                "status": "unsend"
-                            }
-        - response example1: {
-                                "request": "succeeded"
-                             }
-        - payload example2: {
-                                "status": "send"
-                            }
-        - response example2: {
-                                 "players": [
-                                     {
-                                         "id": "147ff90f-9988-45f3-bf39-c98d9fc48e3a",
-                                         "ind_player": 0,
-                                         "name": "name1"
-                                     },
-                                     {
-                                         ...
-                                     },
-                                     {
-                                         "id": "d8cc0522-5389-4d15-9f2c-9c377b6260df",
-                                         "ind_player": 4,
-                                         "name": "name5"
-                                     }
-                                 ]
-                             }
-    """
-
-    try:
-        if request.json["status"] not in ["unsend", "send"]:
-            return jsonify({"request": "unsucceeded", "message": "'status' is not 'send' or 'unsend'"})
-    except KeyError:
-        return jsonify({"request": "unsucceeded", "message": "'status' is missing"})
+def update_turn(game_id):
+    """This function update turn of the game game_id."""
 
     # update current_ind_player
     nb_player = len(bdd_get_value("games", game_id, "players"))
@@ -375,37 +339,31 @@ def mission(game_id):
     current_name_player = list(r.RethinkDB().table("players").filter({"ind_player": next_ind_player}).run())[0]["name"]
     bdd_update_value("games", game_id, "current_name_player", current_name_player)
 
-    if request.json["status"] == "send":
 
-        # update nb_mission_unsend
-        bdd_update_value("games", game_id, "nb_mission_unsend", 0)
+@AVALON_BLUEPRINT.route('/<game_id>/mission_unsend', methods=['POST'])
+def mission(game_id):
+    """This function sends new mission of the game <game_id>.
+        - method: POST
+        - route: /<game_id>/mission
+        - payload example: None
+        - response example: board
+    """
 
-        # update current_quest
-        bdd_update_value("games", game_id, "current_quest", bdd_get_value("games", game_id, "current_quest") + 1)
-
-        # find players
-        list_players = []
-        for id_player in bdd_get_value("games", game_id, "players"):
-            list_players.append({"id": bdd_get_value("players", id_player, "id"),
-                                 "ind_player": bdd_get_value("players", id_player, "ind_player"),
-                                 "name": bdd_get_value("players", id_player, "name")})
-
-        return jsonify({"players": list_players})
+    # update turn
+    update_turn(game_id)
 
     # update nb_mission_unsend
     bdd_update_value("games", game_id, "nb_mission_unsend", bdd_get_value("games", game_id, "nb_mission_unsend") + 1)
 
-    return jsonify({"request": "succeeded"})
+    return board(game_id)
 
 
-@AVALON_BLUEPRINT.route('/<game_id>/vote', methods=['POST'])
+@AVALON_BLUEPRINT.route('/<game_id>/mission_send', methods=['POST'])
 def vote(game_id):
     """This function sends new mission of the game <game_id>.
         - method: POST
         - route: /<game_id>/vote
-        - payload example1: {
-                                "vote": ["SUCCESS", "FAIL"]
-                            }
+        - payload example1: ["SUCCESS", "FAIL"]
         - response example1: {
                                  "result": "FAIL",
                                  "vote": [
@@ -413,9 +371,7 @@ def vote(game_id):
                                      "SUCCESS"
                                  ]
                              }
-        - payload example2: {
-                                "vote": ["SUCCESS", "SUCCESS"]
-                            }
+        - payload example2: ["SUCCESS", "SUCCESS"]
         - response example2: {
                                  "result": "SUCCESS",
                                  "vote": [
@@ -425,7 +381,16 @@ def vote(game_id):
                              }
     """
 
-    list_vote = request.json["vote"]
+    # update turn
+    update_turn(game_id)
+
+    # update nb_mission_unsend
+    bdd_update_value("games", game_id, "nb_mission_unsend", 0)
+
+    # update current_quest
+    bdd_update_value("games", game_id, "current_quest", bdd_get_value("games", game_id, "current_quest") + 1)
+
+    list_vote = request.json
     shuffle(list_vote)
 
     list_board = bdd_get_value("games", game_id, "quests")
