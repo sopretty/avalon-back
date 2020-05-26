@@ -39,6 +39,7 @@ def create_mp3():
     """Create mp3 all files depending on roles in the game."""
 
     list_all_roles = [
+        [],
         ["morgan"],
         ["oberon"],
         ["mordred"],
