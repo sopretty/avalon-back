@@ -249,14 +249,13 @@ def add_roles():
             {
                 "quest": rules["quest{}".format(ind)],
                 "fail": rules["echec{}".format(ind)],
-                "votes": []
             } for ind in range(1, 6)
         ],
         "current_ind_player": ind,
         "current_id_player": list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["id"],
         "current_name_player": list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["name"],
         "current_quest": 1,
-        "nb_mission_unsend": 0
+        "nb_quest_unsend": 0
     }]).run()
 
     # find players to return
@@ -306,7 +305,7 @@ def board(game_id):
                                     "echec4": 1,
                                     "echec5": 1
                                 },
-                                "nb_mission_unsend": 0,
+                                "nb_quest_unsend": 0,
                                 "nb_player_to_send": {
                                     "quest1": 2,
                                     "quest2": 3,
@@ -320,9 +319,9 @@ def board(game_id):
     # find board of the <game_id>
     return jsonify({
         "current_id_player": bdd_get_value("games", game_id, "current_id_player"),
-        "nb_mission_unsend": bdd_get_value("games", game_id, "nb_mission_unsend"),
+        "nb_quest_unsend": bdd_get_value("games", game_id, "nb_quest_unsend"),
         "current_quest": bdd_get_value("games", game_id, "current_quest"),
-        "quests": bdd_get_value("games", game_id, "quests")
+        "quests": bdd_get_value("games", game_id, "quests")  # TODO: don't strip if game ended
     })
 
 
@@ -344,11 +343,11 @@ def update_turn(game_id):
     bdd_update_value("games", game_id, "current_name_player", current_name_player)
 
 
-@AVALON_BLUEPRINT.route('/<game_id>/mission_unsend', methods=['POST'])
-def mission(game_id):
-    """This function sends new mission of the game <game_id>.
+@AVALON_BLUEPRINT.route('/<game_id>/quest_unsend', methods=['POST'])
+def quest_unsend(game_id):
+    """This function sends new quest of the game <game_id>.
         - method: POST
-        - route: /<game_id>/mission
+        - route: /<game_id>/quest_unsend
         - payload example: None
         - response example: board
     """
@@ -356,103 +355,123 @@ def mission(game_id):
     # update turn
     update_turn(game_id)
 
-    # update nb_mission_unsend
-    bdd_update_value("games", game_id, "nb_mission_unsend", bdd_get_value("games", game_id, "nb_mission_unsend") + 1)
+    # update nb_quest_unsend
+    bdd_update_value("games", game_id, "nb_quest_unsend", bdd_get_value("games", game_id, "nb_quest_unsend") + 1)
 
     return board(game_id)
 
 
-@AVALON_BLUEPRINT.route('/<game_id>/mission/<mission_id>', methods=['PUT', 'DELETE', 'GET'])
-def mission_put(game_id, mission_id):
+@AVALON_BLUEPRINT.route('/<game_id>/quest/<int:quest_id>', methods=['DELETE', 'GET', 'POST', 'PUT'])
+def quest(game_id, quest_id):
     """list player_id."""
 
+    if request.method == "PUT":
+        quests = bdd_get_value("games", game_id, "quests")
+        quests[quest_id]["votes"] = {player_id: None for player_id in request.json}
+        quests[quest_id]["status"] = None
+        bdd_update_value("games", game_id, "quests", quests)
 
-@AVALON_BLUEPRINT.route('/<game_id>/mission/<mission_id>', methods=['GET'])
+        response = make_response("", 204)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
 
 
-@AVALON_BLUEPRINT.route('/<game_id>/mission/<mission_id>', methods=['DELETE'])
+    if request.method == "DELETE":
+        quests = bdd_get_value("games", game_id, "quests")
+        del quests[quest_id]["votes"]
+        bdd_update_value("games", game_id, "quests", quests)
+
+        response = make_response("", 204)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
 
 
-@AVALON_BLUEPRINT.route('/<game_id>/vote/<player_id>', methods=['POST'])
-def vote(game_id, player_id):
-    """This function gets new vote mission of the game <game_id> for the <player_id>.
-        - method: POST
-        - route: /<game_id>/vote/<player_id>
-        - payload example: True
-        - response example: None
-    """
+    if request.method == "GET":
 
-    quest_id = bdd_get_value("games", game_id, "current_quest")
-    quests = bdd_get_value("games", game_id, "quests")
-    nb_votes_max = quests[quest_id-1]["quest"]
-    nb_votes = len(quests[quest_id-1]["votes"]) + 1
+        quests = bdd_get_value("games", game_id, "quests")
+        votes = list(quests[quest_id]["votes"].values())
+        shuffle(votes)
 
-    if nb_votes > nb_votes_max:
-        response = make_response("Too many votes for the quest {} of the game {} !".format(game_id, quest_id), 400)
+        status = quests[quest_id]["status"]
+        return jsonify({
+            "votes": votes,
+            "status": status
+        })
+
+
+    if request.method == "POST":
+
+        quests = bdd_get_value("games", game_id, "quests")
+        # nb_votes_max = quests[quest_id]["quest"]
+        # nb_votes = len(quests[quest_id]["votes"]) + 1
+
+        # if nb_votes > nb_votes_max:
+        #     response = make_response("Too many votes for the quest {} of the game {} !".format(game_id, quest_id), 400)
+        #     response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+
+        #     return response
+
+        quests[quest_id]["votes"].update(request.json)
+
+        # if nb_votes == nb_votes_max:
+
+        #     list_vote = [vote[1] for vote in quests[quest_id-1]["votes"]]
+
+        #     # update quest_result
+        #     quests[quest_id-1]["status"] = not list_vote.count(False) >= quests[quest_id-1]["fail"]
+
+        #     # update turn
+        #     update_turn(game_id)
+
+        #     # update nb_quest_unsend
+        #     bdd_update_value("games", game_id, "nb_quest_unsend", 0)
+
+        #     # update current_quest
+        #     bdd_update_value("games", game_id, "current_quest", bdd_get_value("games", game_id, "current_quest") + 1)
+
+        # bdd_update_value("games", game_id, "quests", quests)
+
+        response = make_response("", 204)
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
 
         return response
 
-    quests[quest_id-1]["votes"].append((player_id, request.json))
-
-    if nb_votes == nb_votes_max:
-
-        list_vote = [vote[1] for vote in quests[quest_id-1]["votes"]]
-
-        # update quest_result
-        quests[quest_id-1]["status"] = not list_vote.count(False) >= quests[quest_id-1]["fail"]
-
-        # update turn
-        update_turn(game_id)
-
-        # update nb_mission_unsend
-        bdd_update_value("games", game_id, "nb_mission_unsend", 0)
-
-        # update current_quest
-        bdd_update_value("games", game_id, "current_quest", bdd_get_value("games", game_id, "current_quest") + 1)
-
-    bdd_update_value("games", game_id, "quests", quests)
-
-    response = make_response("", 204)
-    response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-
-    return response
 
 
-@AVALON_BLUEPRINT.route('/<string:game_id>/votes/<string:quest_id>', methods=['GET'])
-@AVALON_BLUEPRINT.route('/<string:game_id>/votes', methods=['GET'])
-def votes(game_id, quest_id=False):
-    """This function sends votes mission of the game <game_id> for the <quest_id>.
-        - method: POST
-        - route: /<game_id>/votes/<quest_id>
-        - payload example1: None
-        - response example1: {
-                                 "result": False,
-                                 "vote": [
-                                     False,
-                                     True
-                                 ]
-                             }
-        - payload example2: None
-        - response example2: {
-                                 "result": True,
-                                 "vote": [
-                                     True,
-                                     True
-                                 ]
-                             }
-    """
+# @AVALON_BLUEPRINT.route('/<string:game_id>/votes/<string:quest_id>', methods=['GET'])
+# @AVALON_BLUEPRINT.route('/<string:game_id>/votes', methods=['GET'])
+# def votes(game_id, quest_id=False):
+#     """This function sends votes mission of the game <game_id> for the <quest_id>.
+#         - method: POST
+#         - route: /<game_id>/votes/<quest_id>
+#         - payload example1: None
+#         - response example1: {
+#                                  "result": False,
+#                                  "vote": [
+#                                      False,
+#                                      True
+#                                  ]
+#                              }
+#         - payload example2: None
+#         - response example2: {
+#                                  "result": True,
+#                                  "vote": [
+#                                      True,
+#                                      True
+#                                  ]
+#                              }
+#     """
 
-    quest_id_votes = bdd_get_value("games", game_id, "current_quest") - 1
-    if quest_id:
-        quest_id_votes = quest_id
+#     quest_id_votes = bdd_get_value("games", game_id, "current_quest") - 1
+#     if quest_id:
+#         quest_id_votes = quest_id
 
-    votes_id = bdd_get_value("games", game_id, "quests")[quest_id_votes-1]["votes"]
+#     votes_id = bdd_get_value("games", game_id, "quests")[quest_id_votes-1]["votes"]
 
-    list_vote = [vote[1] for vote in votes_id]
-    shuffle(list_vote)
+#     list_vote = [vote[1] for vote in votes_id]
+#     shuffle(list_vote)
 
-    return jsonify({"vote": list_vote, "result": bdd_get_value("games", game_id, "quests")[quest_id_votes-1]["result"]})
+#     return jsonify({"vote": list_vote, "result": bdd_get_value("games", game_id, "quests")[quest_id_votes-1]["result"]})
 
 
 
