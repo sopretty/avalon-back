@@ -16,18 +16,18 @@ QUEST_BLUEPRINT.before_request(bdd_connect)
 def update_turn(game_id):
     """This function update turn of the game game_id."""
 
+    list_id_players = bdd_get_value("games", game_id, "players")
+
     # update current_ind_player
-    nb_player = len(bdd_get_value("games", game_id, "players"))
     current_ind_player = bdd_get_value("games", game_id, "current_ind_player")
-    next_ind_player = (current_ind_player + 1) % nb_player
+    next_ind_player = (current_ind_player + 1) % len(list_id_players)
     bdd_update_value("games", game_id, "current_ind_player", next_ind_player)
 
     # update current_id_player
-    current_id_player = list(r.RethinkDB().table("players").filter({"ind_player": next_ind_player}).run())[0]["id"]
-    bdd_update_value("games", game_id, "current_id_player", current_id_player)
+    bdd_update_value("games", game_id, "current_id_player", list_id_players[next_ind_player])
 
     # update current_name_player
-    current_name_player = list(r.RethinkDB().table("players").filter({"ind_player": next_ind_player}).run())[0]["name"]
+    current_name_player = bdd_get_value("players", list_id_players[next_ind_player], "name")
     bdd_update_value("games", game_id, "current_name_player", current_name_player)
 
 

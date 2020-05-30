@@ -267,13 +267,13 @@ def add_roles():
         "players": list_id_players,
         "quests": [
             {
-                "quest": game_rules["quest{}".format(ind)],
-                "fail": game_rules["echec{}".format(ind)],
-            } for ind in range(1, 6)
+                "quest": game_rules["quest{}".format(i)],
+                "fail": game_rules["echec{}".format(i)],
+            } for i in range(1, 6)
         ],
         "current_ind_player": ind,
-        "current_id_player": list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["id"],
-        "current_name_player": list(r.RethinkDB().table("players").filter({"ind_player": ind}).run())[0]["name"],
+        "current_id_player": list_id_players[ind],
+        "current_name_player": bdd_get_value("players", list_id_players[ind], "name"),
         "current_quest": 0,
         "nb_quest_unsend": 0
     }]).run()
