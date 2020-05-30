@@ -24,7 +24,6 @@ USERS = {
 }
 
 
-
 @AUTH.verify_password
 def verify_password(username, password):
     if username in USERS:
@@ -337,12 +336,20 @@ def board(game_id):
                             }
     """
 
+    quests = bdd_get_value("games", game_id, "quests")
+
+    list_status = [quest.get("status") for quest in quests]
+    if list_status.count(False) < 3 and list_status.count(True) < 3:
+        for quest in quests:
+            if "votes" in quest:
+                del quest["votes"]
+
     # find board of the <game_id>
     return jsonify({
         "current_id_player": bdd_get_value("games", game_id, "current_id_player"),
         "nb_quest_unsend": bdd_get_value("games", game_id, "nb_quest_unsend"),
         "current_quest": bdd_get_value("games", game_id, "current_quest"),
-        "quests": bdd_get_value("games", game_id, "quests")  # TODO: don't strip if game ended
+        "quests": quests
     })
 
 

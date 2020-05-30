@@ -123,7 +123,10 @@ def quest_post(game_id, quest_id):
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
         return response
 
-    # TODO: Que faire si le joueur a deja vote
+    if not isinstance(list(request.json.values())[0], bool):
+        response = make_response("Vote should be a boolean !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
 
 
     quests[quest_id]["votes"].update(request.json)
