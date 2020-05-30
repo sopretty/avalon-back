@@ -247,7 +247,7 @@ def add_roles():
     del game_rules["id"]
     del game_rules["nb_player"]
 
-    if len([role for role in request.json["roles"] if role != "perceval"]) >= game_rules["red"]:
+    if len([role for role in request.json["roles"] if role != "perceval"]) > game_rules["red"]:
         response = make_response("Too many red roles chosen !", 400)
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
         return response
