@@ -1,5 +1,0 @@
-Flask==1.0.2
-Flask-Cors==3.0.8
-flask_httpauth==3.3.0
-pydub==0.24.0
-rethinkdb==2.4.1

@@ -19,17 +19,9 @@ RUN /root/miniconda3/bin/conda install pip && \
 # installation of dependencies
 RUN apt-get -y update && apt-get install -y unzip gfortran openssh-server ffmpeg
 
-
-RUN mkdir Avalon
-RUN mkdir Avalon/resources
-
-COPY resources /Avalon/resources
-COPY requirements.txt /Avalon
-RUN /root/miniconda3/bin/pip install -r Avalon/requirements.txt
-COPY app.py /Avalon
-COPY pylib.py /Avalon
-
-WORKDIR Avalon
+COPY app /app
+RUN /root/miniconda3/bin/pip install -r app/requirements/requirements.txt
+WORKDIR app
 CMD ["sh", "-c", "/root/miniconda3/bin/python app.py"]
 
 
