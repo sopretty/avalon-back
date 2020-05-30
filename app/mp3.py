@@ -4,6 +4,7 @@ from pydub import AudioSegment
 def create_mp3():
     """Create mp3 all files depending on roles in the game."""
 
+    #TODO: les roles ne devraient pas etre en dur
     list_all_roles = [
         [],
         ["morgan"],

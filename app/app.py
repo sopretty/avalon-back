@@ -35,7 +35,7 @@ if __name__ == '__main__':
     HANDLER.setLevel(logging.INFO)
     APP.logger.addHandler(HANDLER)
 
-    #create_mp3()
+    create_mp3()
 
     # Start the RESTful web service used in Avalon
     APP.run(host=ARGS.host, port=ARGS.port, debug=True)

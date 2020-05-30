@@ -193,13 +193,67 @@ def add_roles():
                             }
     """
 
+    if set(request.json) != {"names", "roles"}:
+        response = make_response("Only 'names' and 'roles' are required !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    if not isinstance(request.json["names"], list) or not isinstance(request.json["roles"], list):
+        response = make_response("Both 'names' and 'roles' must be a list !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    rules = list(r.RethinkDB().table("rules").run())
+    min_nb_player = min(rules, key=lambda x: x["nb_player"])["nb_player"]
+    max_nb_player = max(rules, key=lambda x: x["nb_player"])["nb_player"]
+
+    if not min_nb_player <= len(request.json["names"]) <= max_nb_player:
+        response = make_response(
+            "Player number should be between {} and {} !".format(min_nb_player, max_nb_player),
+            400
+        )
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    if len(request.json["names"]) != len(set(request.json["names"])):
+        response = make_response("Players name should be unique !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    if len(request.json["roles"]) != len(set(request.json["roles"])):
+        response = make_response("Players role should be unique !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    available_roles = ("oberon", "morgan", "mordred", "perceval")  #TODO: ne devrait pas etre en dur
+    for role in request.json["roles"]:
+        if role not in available_roles:
+            response = make_response("Players role should be {}, {}, {} or {} !".format(*available_roles), 400)
+            response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+            return response
+
+    if "morgan" in request.json["roles"] and "perceval" not in request.json["roles"]:
+        response = make_response("'morgan' is selected but 'perceval' is not !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    if "perceval" in request.json["roles"] and "morgan" not in request.json["roles"]:
+        response = make_response("'perceval' is selected but 'morgan' is not !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
     # find rules
-    rules = list(r.RethinkDB().table("rules").filter({"nb_player": len(request.json["names"])}).run())[0]
-    del rules["id"]
-    del rules["nb_player"]
+    game_rules = list(r.RethinkDB().table("rules").filter({"nb_player": len(request.json["names"])}).run())[0]
+    del game_rules["id"]
+    del game_rules["nb_player"]
+
+    if len([role for role in request.json["roles"] if role != "perceval"]) >= game_rules["red"]:
+        response = make_response("Too many red roles chosen !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
 
     # add roles to players
-    players = roles_and_players(request.json, rules["red"], rules["blue"])
+    players = roles_and_players(request.json, game_rules["red"], game_rules["blue"])
 
     # find players
     list_id_players = []
@@ -213,8 +267,8 @@ def add_roles():
         "players": list_id_players,
         "quests": [
             {
-                "quest": rules["quest{}".format(ind)],
-                "fail": rules["echec{}".format(ind)],
+                "quest": game_rules["quest{}".format(ind)],
+                "fail": game_rules["echec{}".format(ind)],
             } for ind in range(1, 6)
         ],
         "current_ind_player": ind,
@@ -344,14 +398,8 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                        - 3. Unvalid role
                        - 4. Too many red in the game (or too many blue in the game, checked but impossible)"""
 
-    if "morgan" in dict_names_roles["roles"] and "perceval" not in dict_names_roles["roles"]:
-        print("ERROR !!! morgan is in the game but perceval is not")
-
-    if "perceval" in dict_names_roles["roles"] and "morgan" not in dict_names_roles["roles"]:
-        print("ERROR !!! perceval is in the game but morgan is not")
-
-    nb_red, nb_blue = 1, 1
-    list_roles = ["merlin", "assassin"]
+    nb_red, nb_blue = 0, 1
+    list_roles = ["merlin"]
     for role in dict_names_roles["roles"]:
         if role in ["mordred", "morgan", "oberon"]:
             nb_red += 1
@@ -359,25 +407,32 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
         elif role == "perceval":
             nb_blue += 1
             list_roles.append(role)
-        else:
-            print("ERROR !!! can't add this role: "+str(role))
 
-    if nb_red <= max_red and nb_blue <= max_blue:
-        list_roles.extend(["red"]*(max_red-nb_red))
-        list_roles.extend(["blue"]*(max_blue-nb_blue))
-    else:
-        print("ERROR !!! Too many red or blue")
+    list_roles.extend(["red"]*(max_red-nb_red))
+    list_roles.extend(["blue"]*(max_blue-nb_blue))
 
     shuffle(list_roles)
 
     list_players = []
     for ind, role in enumerate(list_roles):
         if role in ["merlin", "perceval", "blue"]:
-            list_players.append({"ind_player": ind, "name": dict_names_roles["names"][ind],
-                                 "team": "blue", "role": role})
+            list_players.append(
+                {
+                    "ind_player": ind,
+                    "name": dict_names_roles["names"][ind],
+                    "team": "blue",
+                    "role": role
+                }
+            )
         else:
-            list_players.append({"ind_player": ind, "name": dict_names_roles["names"][ind],
-                                 "team": "red", "role": role})
+            list_players.append(
+                {
+                    "ind_player": ind,
+                    "name": dict_names_roles["names"][ind],
+                    "team": "red",
+                    "role": role
+                }
+            )
 
     return list_players
 
