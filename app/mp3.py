@@ -35,4 +35,4 @@ def create_mp3():
         for mp3 in list_mp3:
             mp3_combined += AudioSegment.from_mp3("resources/{}".format(mp3))
 
-        mp3_combined.export("resources/{}.mp3".format('-'.join(sorted(list_roles))), format="mp3")
+        mp3_combined.export("resources/_{}.mp3".format('-'.join(sorted(list_roles))), format="mp3")

@@ -296,15 +296,12 @@ def post_mp3(game_id):
     """
 
     # find role of each player
-    list_roles = []
-    for player_id in bdd_get_value("games", game_id, "players"):
-        list_roles.append(list(r.RethinkDB().table("players").filter({"id": player_id}).run())[0]["role"])
-
     name_roles = "-".join(sorted(
-        [role for role in list_roles if role not in ("assassin", "blue", "merlin", "perceval", "red")]
+        [bdd_get_value("players", player_id, "role") for player_id in bdd_get_value("games", game_id, "players") \
+         if bdd_get_value("players", player_id, "role") not in ("blue", "merlin", "perceval", "red")]
     ))
 
-    return send_file("resources/{}.mp3".format(name_roles), attachment_filename="roles.mp3", mimetype="audio/mpeg")
+    return send_file("resources/_{}.mp3".format(name_roles), attachment_filename="roles.mp3", mimetype="audio/mpeg")
 
 
 @AVALON_BLUEPRINT.route('/<game_id>/board', methods=['GET'])
