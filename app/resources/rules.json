@@ -1,0 +1,158 @@
+{
+    "5": {
+        "blue": 3,
+        "red": 2,
+        "quests": [
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 2
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 2
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            }
+        ]
+    },
+    "6": {
+        "blue": 4,
+        "red": 2,
+        "quests": [
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 2
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            }
+        ]
+    },
+    "7": {
+        "blue": 4,
+        "red": 3,
+        "quests": [
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 2
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 2,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            }
+        ]
+    },
+    "8": {
+        "blue": 5,
+        "red": 3,
+        "quests": [
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 2,
+                "nb_players_to_send": 5
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 5
+            }
+        ]
+    },
+    "9": {
+        "blue": 6,
+        "red": 3,
+        "quests": [
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 2,
+                "nb_players_to_send": 5
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 5
+            }
+        ]
+    },
+    "10": {
+        "blue": 6,
+        "red": 4,
+        "quests": [
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 3
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 4
+            },
+            {
+                "nb_votes_to_fail": 2,
+                "nb_players_to_send": 5
+            },
+            {
+                "nb_votes_to_fail": 1,
+                "nb_players_to_send": 5
+            }
+        ]
+    }
+}

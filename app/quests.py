@@ -1,37 +1,27 @@
 from random import shuffle
 
-from flask import Blueprint, jsonify, make_response, request, send_file, current_app
+from flask import Blueprint, jsonify, make_response, request, current_app
 from flask_cors import CORS
-import rethinkdb as r
 
-from bdd_utils import bdd_connect, bdd_get_value, bdd_update_value
-from pylib import board
+from db_utils import db_connect, db_get_value, db_update_value
+from games import game_get
 
-QUEST_BLUEPRINT = Blueprint('quest', __name__)
-CORS(QUEST_BLUEPRINT)
+QUESTS_BLUEPRINT = Blueprint('quests', __name__)
+CORS(QUESTS_BLUEPRINT)
 
-QUEST_BLUEPRINT.before_request(bdd_connect)
+QUESTS_BLUEPRINT.before_request(db_connect)
 
 
-def update_turn(game_id):
-    """This function update turn of the game game_id."""
+def update_current_id_player(game_id):
+    """This function update 'current_id_player' of the game game_id."""
 
-    list_id_players = bdd_get_value("games", game_id, "players")
-
-    # update current_ind_player
-    current_ind_player = bdd_get_value("games", game_id, "current_ind_player")
+    list_id_players = db_get_value("games", game_id, "players")
+    current_ind_player = list_id_players.index(db_get_value("games", game_id, "current_id_player"))
     next_ind_player = (current_ind_player + 1) % len(list_id_players)
-    bdd_update_value("games", game_id, "current_ind_player", next_ind_player)
-
-    # update current_id_player
-    bdd_update_value("games", game_id, "current_id_player", list_id_players[next_ind_player])
-
-    # update current_name_player
-    current_name_player = bdd_get_value("players", list_id_players[next_ind_player], "name")
-    bdd_update_value("games", game_id, "current_name_player", current_name_player)
+    db_update_value("games", game_id, "current_id_player", list_id_players[next_ind_player])
 
 
-@QUEST_BLUEPRINT.route("/<string:game_id>/quest_unsend", methods=["POST"])
+@QUESTS_BLUEPRINT.route("/games/<string:game_id>/quest_unsend", methods=["POST"])
 def quest_unsend(game_id):
     """This function sends new quest of the game <game_id>.
         - method: POST
@@ -40,17 +30,16 @@ def quest_unsend(game_id):
         - response example: board
     """
 
-    # update turn
-    update_turn(game_id)
+    update_current_id_player(game_id)
 
     # update nb_quest_unsend
-    bdd_update_value("games", game_id, "nb_quest_unsend", bdd_get_value("games", game_id, "nb_quest_unsend") + 1)
+    db_update_value("games", game_id, "nb_quest_unsend", db_get_value("games", game_id, "nb_quest_unsend") + 1)
 
-    return board(game_id)
+    return game_get(game_id)
 
 
-@QUEST_BLUEPRINT.route("/<string:game_id>/quest/<int:quest_id>", methods=["DELETE", "GET", "POST", "PUT"])
-def quest(game_id, quest_id):
+@QUESTS_BLUEPRINT.route("/games/<string:game_id>/quests/<int:quest_id>", methods=["DELETE", "GET", "POST", "PUT"])
+def quests(game_id, quest_id):
     """list player_id."""
 
     if request.method == "DELETE":
@@ -68,9 +57,9 @@ def quest(game_id, quest_id):
 
 def quest_delete(game_id, quest_id):
 
-    quests = bdd_get_value("games", game_id, "quests")
+    quests = db_get_value("games", game_id, "quests")
     del quests[quest_id]["votes"]
-    bdd_update_value("games", game_id, "quests", quests)
+    db_update_value("games", game_id, "quests", quests)
 
     response = make_response("", 204)
     response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
@@ -79,7 +68,7 @@ def quest_delete(game_id, quest_id):
 
 def quest_get(game_id, quest_id):
 
-    quests = bdd_get_value("games", game_id, "quests")
+    quests = db_get_value("games", game_id, "quests")
 
     if quests[quest_id]["status"] is None:
         response = make_response("The vote number {} is not finished !".format(quest_id), 400)
@@ -98,7 +87,7 @@ def quest_get(game_id, quest_id):
 
 def quest_post(game_id, quest_id):
 
-    quests = bdd_get_value("games", game_id, "quests")
+    quests = db_get_value("games", game_id, "quests")
 
     if "status" not in quests[quest_id]:
         response = make_response("The vote number {} is not established !".format(quest_id), 400)
@@ -115,7 +104,7 @@ def quest_post(game_id, quest_id):
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
         return response
 
-    if list(request.json.keys())[0] not in bdd_get_value("games", game_id, "players"):
+    if list(request.json.keys())[0] not in db_get_value("games", game_id, "players"):
         response = make_response(
             "This player {} is not allowed to vote !".format(list(request.json.keys())[0]),
             400
@@ -128,24 +117,30 @@ def quest_post(game_id, quest_id):
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
         return response
 
-
     quests[quest_id]["votes"].update(request.json)
 
     list_vote = list(quests[quest_id]["votes"].values())
 
     if not list_vote.count(None):
-        quests[quest_id]["status"] = not list_vote.count(False) >= quests[quest_id]["fail"]
+        quests[quest_id]["status"] = not list_vote.count(False) >= quests[quest_id]["nb_votes_to_fail"]
 
-        # update turn
-        update_turn(game_id)
+        update_current_id_player(game_id)
 
         # update nb_quest_unsend
-        bdd_update_value("games", game_id, "nb_quest_unsend", 0)
+        db_update_value("games", game_id, "nb_quest_unsend", 0)
 
         # update current_quest
-        bdd_update_value("games", game_id, "current_quest", bdd_get_value("games", game_id, "current_quest") + 1)
+        db_update_value("games", game_id, "current_quest", db_get_value("games", game_id, "current_quest") + 1)
 
-    bdd_update_value("games", game_id, "quests", quests)
+    list_status = [quest.get("status") for quest in quests]
+
+    if list_status.count(False) >= 3:
+        db_update_value("games", game_id, "result", {"status": False})
+
+    if list_status.count(True) >= 3:
+        db_update_value("games", game_id, "result", {"status": True})
+
+    db_update_value("games", game_id, "quests", quests)
 
     response = make_response("", 204)
     response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
@@ -155,15 +150,15 @@ def quest_post(game_id, quest_id):
 def quest_put(game_id, quest_id):
 
     for player_id in request.json:
-        if player_id not in bdd_get_value("games", game_id, "players"):
+        if player_id not in db_get_value("games", game_id, "players"):
             response = make_response("The player {} is not in this game !".format(player_id), 400)
             response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
             return response
 
-    quests = bdd_get_value("games", game_id, "quests")
-    if len(request.json) != quests[quest_id]["quest"]:
+    quests = db_get_value("games", game_id, "quests")
+    if len(request.json) != quests[quest_id]["nb_players_to_send"]:
         response = make_response(
-            "The quest number {} needs {} votes !".format(quest_id, quests[quest_id]["quest"]),
+            "The quest number {} needs {} votes !".format(quest_id, quests[quest_id]["nb_players_to_send"]),
             400
         )
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
@@ -171,7 +166,7 @@ def quest_put(game_id, quest_id):
 
     quests[quest_id]["votes"] = {player_id: None for player_id in request.json}
     quests[quest_id]["status"] = None
-    bdd_update_value("games", game_id, "quests", quests)
+    db_update_value("games", game_id, "quests", quests)
 
     response = make_response("", 204)
     response.mimetype = current_app.config["JSONIFY_MIMETYPE"]

@@ -11,11 +11,13 @@ from flask import Flask
 
 from mp3 import create_mp3
 from pylib import AVALON_BLUEPRINT
-from quest import QUEST_BLUEPRINT
+from quests import QUESTS_BLUEPRINT
+from games import GAMES_BLUEPRINT
 
 APP = Flask(__name__)
 APP.register_blueprint(AVALON_BLUEPRINT)
-APP.register_blueprint(QUEST_BLUEPRINT)
+APP.register_blueprint(GAMES_BLUEPRINT)
+APP.register_blueprint(QUESTS_BLUEPRINT)
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@
   - Initialize databases (3 tables)
   ```bash
        - method: PUT
-       - route: /retart_bdd
+       - route: /retart_db
        - payload example: {
                               "table1": "rules",
                               "table2": "games",
@@ -85,7 +85,6 @@
                                "players": [
                                    {
                                        "id": "95763b27-de50-4d39-8ac2-2a7010281788",
-                                       "ind_player": 0,
                                        "name": "name1",
                                        "role": "assassin",
                                        "team": "red"
@@ -95,7 +94,6 @@
                                    },
                                    {
                                        "id": "83d21d25-f359-4ddc-9048-69ba1e6cf5b5",
-                                       "ind_player": 4,
                                        "name": "name5",
                                        "role": "morgan",
                                        "team": "red"
@@ -110,15 +108,13 @@
        - payload example:
        - response example: response.mpga
   ```
-  - Visualize board
+  - Visualize game
   ```bash
        - method: GET
-       - route: /<game_id>/board
+       - route: /games/<game_id>
        - payload example:
        - response example: {
                                "current_id_player": "79d33eb2-199c-40a2-8205-27cc3511aede",
-                               "current_ind_player": 1,
-                               "current_name_player": "name2",
                                "current_quest": 1,
                                "nb_echec_to_fail": {
                                    "echec1": 1,
@@ -154,7 +150,6 @@
                                 "players": [
                                     {
                                         "id": "147ff90f-9988-45f3-bf39-c98d9fc48e3a",
-                                        "ind_player": 0,
                                         "name": "name1"
                                     },
                                     {
@@ -162,7 +157,6 @@
                                     },
                                     {
                                         "id": "d8cc0522-5389-4d15-9f2c-9c377b6260df",
-                                        "ind_player": 4,
                                         "name": "name5"
                                     }
                                 ]
@@ -191,6 +185,6 @@
                                     "SUCCESS",
                                     "SUCCESS"
                                 ]
-                            } 
+                            }
   ```
 
