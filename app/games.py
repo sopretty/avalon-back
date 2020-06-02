@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from flask_cors import CORS
 import rethinkdb as r
 
-from db_utils import db_connect, db_get_value
+from db_utils import db_connect
 from pylib import get_table
 from rules import load_rules
 
@@ -23,7 +23,7 @@ def games(game_id=None):
         return game_get(game_id)
 
     if request.method == "PUT":
-        return game_put(game_id)
+        return game_put()
 
 
 def game_get(game_id):
@@ -33,15 +33,14 @@ def game_get(game_id):
         return jsonify(get_table("games"))
 
     game = r.RethinkDB().table("games").get(game_id).run()
-    if "result" not in game:
-        for quest in game["quests"]:
-            if "votes" in quest:
-                del quest["votes"]
+    players = [r.RethinkDB().table("players").get(player_id).run() for player_id in game["players"]]
+    # players = r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).run()
+    game["players"] = players
 
     return jsonify(game)
 
 
-def game_put(game_id):
+def game_put():
     """
     This function adds rules and roles to players randomly.
         - method: PUT
@@ -163,7 +162,7 @@ def game_put(game_id):
     for player_id in list_id_players:
         list_players.append(list(r.RethinkDB().table("players").get_all(player_id).run())[0])
 
-    return jsonify({"players": list_players, "id": insert["generated_keys"][0]})
+    return game_get(insert["generated_keys"][0])
 
 
 def roles_and_players(dict_names_roles, max_red, max_blue):

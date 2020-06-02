@@ -8,7 +8,7 @@ from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
 
-from db_utils import db_connect, db_get_value
+from db_utils import db_connect, db_get_value, db_update_value
 from rules import load_rules
 
 
@@ -110,6 +110,51 @@ def get_table(table):
     return list(r.RethinkDB().table(table).run())
 
 
-# @AVALON_BLUEPRINT.route('/games/<string:game_id>/guess_merlin', methods=['POST'])
-# def guess_merlin():
+@AVALON_BLUEPRINT.route('/games/<string:game_id>/guess_merlin', methods=['POST'])
+def guess_merlin(game_id):
+    """
+    """
 
+    if len(request.json) != 1:
+        response = make_response("Only 1 vote required ('assassin') !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    player_id_current_game = db_get_value("games", game_id, "players")
+    assassin_id = list(request.json)[0]
+    vote_assassin = request.json[assassin_id]
+
+    if assassin_id not in player_id_current_game:
+        response = make_response("Player {} is not in this game !".format(assassin_id), 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    if "assassin" not in r.RethinkDB().table("players").get(assassin_id).run():
+        response = make_response("Player {} is not 'assassin' !".format(assassin_id), 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    if vote_assassin not in player_id_current_game:
+        response = make_response("Player {} is not in this game !".format(vote_assassin), 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    result = r.RethinkDB().table("games").get(game_id).run().get("result")
+
+    if not result:
+        response = make_response("Game's status is not established !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    if not result["status"]:
+        response = make_response("Games's status should be 'true' (ie blue team won) !", 400)
+        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
+        return response
+
+    result["guess_merlin_id"] = vote_assassin
+    if db_get_value("players", vote_assassin, "role") == "merlin":
+        result["status"] = False
+
+    db_update_value("games", game_id, "result", result)
+
+    return result

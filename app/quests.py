@@ -39,7 +39,7 @@ def quest_unsend(game_id):
 
 
 @QUESTS_BLUEPRINT.route("/games/<string:game_id>/quests/<int:quest_id>", methods=["DELETE", "GET", "POST", "PUT"])
-def quests(game_id, quest_id):
+def quests_(game_id, quest_id):
     """list player_id."""
 
     if request.method == "DELETE":
@@ -75,14 +75,16 @@ def quest_get(game_id, quest_id):
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
         return response
 
-    votes = list(quests[quest_id]["votes"].values())
-    shuffle(votes)
+    # votes = list(quests[quest_id]["votes"].values())
+    # shuffle(votes)
 
-    status = quests[quest_id]["status"]
-    return jsonify({
-        "votes": votes,
-        "status": status
-    })
+    # status = quests[quest_id]["status"]
+    # return jsonify({
+    #     "votes": votes,
+    #     "status": status
+    # })
+
+    return jsonify(quests[quest_id])
 
 
 def quest_post(game_id, quest_id):
@@ -90,12 +92,12 @@ def quest_post(game_id, quest_id):
     quests = db_get_value("games", game_id, "quests")
 
     if "status" not in quests[quest_id]:
-        response = make_response("The vote number {} is not established !".format(quest_id), 400)
+        response = make_response("Vote number {} is not established !".format(quest_id), 400)
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
         return response
 
     if quests[quest_id]["status"] is not None:
-        response = make_response("The vote number {} is finished !".format(quest_id), 400)
+        response = make_response("Vote number {} is finished !".format(quest_id), 400)
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
         return response
 
@@ -106,7 +108,7 @@ def quest_post(game_id, quest_id):
 
     if list(request.json.keys())[0] not in db_get_value("games", game_id, "players"):
         response = make_response(
-            "This player {} is not allowed to vote !".format(list(request.json.keys())[0]),
+            "Player {} is not allowed to vote !".format(list(request.json.keys())[0]),
             400
         )
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
@@ -142,23 +144,21 @@ def quest_post(game_id, quest_id):
 
     db_update_value("games", game_id, "quests", quests)
 
-    response = make_response("", 204)
-    response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    return response
+    return jsonify(quests[quest_id])
 
 
 def quest_put(game_id, quest_id):
 
     for player_id in request.json:
         if player_id not in db_get_value("games", game_id, "players"):
-            response = make_response("The player {} is not in this game !".format(player_id), 400)
+            response = make_response("Player {} is not in this game !".format(player_id), 400)
             response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
             return response
 
     quests = db_get_value("games", game_id, "quests")
     if len(request.json) != quests[quest_id]["nb_players_to_send"]:
         response = make_response(
-            "The quest number {} needs {} votes !".format(quest_id, quests[quest_id]["nb_players_to_send"]),
+            "Quest number {} needs {} votes !".format(quest_id, quests[quest_id]["nb_players_to_send"]),
             400
         )
         response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
@@ -168,6 +168,4 @@ def quest_put(game_id, quest_id):
     quests[quest_id]["status"] = None
     db_update_value("games", game_id, "quests", quests)
 
-    response = make_response("", 204)
-    response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    return response
+    return jsonify(quests[quest_id])
