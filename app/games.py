@@ -142,27 +142,23 @@ def game_put():
     players = roles_and_players(request.json, game_rules["red"], game_rules["blue"])
 
     # find players
-    list_id_players = []
-    for player in players:
-        list_id_players.append(r.RethinkDB().table("players").insert(player).run()["generated_keys"][0])
+    list_id_players = r.RethinkDB().table("players").insert(players).run()["generated_keys"]
 
     ind = choice(range(len(request.json["names"])))
 
     # create new game in table games
-    insert = r.RethinkDB().table("games").insert([{
+    insert = r.RethinkDB().table("games").insert({
         "players": list_id_players,
         "quests": game_rules["quests"],
         "current_id_player": list_id_players[ind],
         "current_quest": 0,
         "nb_quest_unsend": 0
-    }]).run()
+        }, return_changes=True)["changes"][0]["new_val"].merge(lambda game:
+        {"players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).coerce_to(
+            "array"
+            )}).run()
 
-    # find players to return
-    list_players = []
-    for player_id in list_id_players:
-        list_players.append(list(r.RethinkDB().table("players").get_all(player_id).run())[0])
-
-    return game_get(insert["generated_keys"][0])
+    return jsonify(insert)
 
 
 def roles_and_players(dict_names_roles, max_red, max_blue):
