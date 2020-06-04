@@ -6,6 +6,7 @@ def db_connect():
     """This function opens the connection to the database."""
 
     r.RethinkDB().connect("rethinkdb", 28015).repl()
+    # r.RethinkDB().connect("0.0.0.0", 28015).repl()
 
 
 def db_get_value(table, ident, key):
@@ -38,3 +39,9 @@ def db_update_value(table, ident, key, value):
     """This function updates the key value in the table."""
 
     return r.RethinkDB().table(table).get(ident).update({key: value}).run()
+
+
+def resolve_key_id(lambda_game, *args):
+    return {
+        arg: r.RethinkDB().table(arg).get_all(r.RethinkDB().args(lambda_game[arg])).coerce_to("array") for arg in args
+    }

@@ -48,12 +48,14 @@ def restart_db():
         - payload example: [
                                "rules",
                                "players"
+                               "quests",
+                               "users"
                            ]
     """
 
     for table in request.json:
-        if table not in ("games", "players"):
-            response = make_response("Table {} should be 'games' or 'players' !".format(table), 400)
+        if table not in ("games", "players", "quests", "users"):
+            response = make_response("Table {} should be 'games', 'players', 'quests' or 'users' !".format(table), 400)
             response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
             return response
 
@@ -158,3 +160,12 @@ def guess_merlin(game_id):
     db_update_value("games", game_id, "result", result)
 
     return result
+
+@AVALON_BLUEPRINT.route('/quests', methods=['GET'])
+def get_quests():
+    """
+    This function visualizes a table depending on the input <table_name>.
+        - method: GET
+        - route: /<table_name> (table_name is games and players)
+    """
+    return jsonify(get_table("quests"))

@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from flask_cors import CORS
 import rethinkdb as r
 
-from db_utils import db_connect
+from db_utils import db_connect, resolve_key_id
 from pylib import get_table
 from rules import load_rules
 
@@ -34,7 +34,6 @@ def game_get(game_id):
 
     game = r.RethinkDB().table("games").get(game_id).run()
     players = [r.RethinkDB().table("players").get(player_id).run() for player_id in game["players"]]
-    # players = r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).run()
     game["players"] = players
 
     return jsonify(game)
@@ -144,21 +143,21 @@ def game_put():
     # find players
     list_id_players = r.RethinkDB().table("players").insert(players).run()["generated_keys"]
 
-    ind = choice(range(len(request.json["names"])))
+    # find quests
+    list_id_quests = r.RethinkDB().table("quests").insert(game_rules["quests"]).run()["generated_keys"]
 
-    # create new game in table games
-    insert = r.RethinkDB().table("games").insert({
-        "players": list_id_players,
-        "quests": game_rules["quests"],
-        "current_id_player": list_id_players[ind],
-        "current_quest": 0,
-        "nb_quest_unsend": 0
-        }, return_changes=True)["changes"][0]["new_val"].merge(lambda game:
-        {"players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).coerce_to(
-            "array"
-            )}).run()
-
-    return jsonify(insert)
+    return jsonify(
+        r.RethinkDB().table("games").insert(
+            {
+                "players": list_id_players,
+                "quests": list_id_quests,
+                "current_id_player": list_id_players[choice(range(len(request.json["names"])))],
+                "current_quest": 0,
+                "nb_quest_unsend": 0
+            },
+            return_changes=True
+        )["changes"][0]["new_val"].merge(lambda game: resolve_key_id(game, "players", "quests")).run()
+    )
 
 
 def roles_and_players(dict_names_roles, max_red, max_blue):
