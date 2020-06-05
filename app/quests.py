@@ -62,9 +62,7 @@ def quest_delete(game_id, quest_number):
 
     r.RethinkDB().table("quests").get(id_quest_number).replace(r.RethinkDB().row.without("votes", "status")).run()
 
-    response = make_response("", 204)
-    response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    return response
+    return make_response("", 204)
 
 
 def quest_get(game_id, quest_number):
@@ -73,9 +71,7 @@ def quest_get(game_id, quest_number):
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
     if quest["status"] is None:
-        response = make_response("The vote number {} is not finished !".format(quest_number), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("The vote number {} is not finished !".format(quest_number), 400)
 
     return jsonify(quest)
 
@@ -86,37 +82,25 @@ def quest_post(game_id, quest_number):
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
     if game["current_quest"] != quest_number:
-        response = make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
 
     if "status" not in quest:
-        response = make_response("Vote number {} is not established !".format(quest_number), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Vote number {} is not established !".format(quest_number), 400)
 
     if quest["status"] is not None:
-        response = make_response("Vote number {} is finished !".format(quest_number), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Vote number {} is finished !".format(quest_number), 400)
 
     if len(request.json) != 1:
-        response = make_response("Only one vote allowed !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Only one vote allowed !", 400)
 
     if list(request.json)[0] not in db_get_value("games", game_id, "players"):
-        response = make_response(
+        return make_response(
             "Player {} is not allowed to vote !".format(list(request.json)[0]),
             400
         )
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
 
     if not isinstance(list(request.json.values())[0], bool):
-        response = make_response("Vote should be a boolean !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Vote should be a boolean !", 400)
 
     quest["votes"].update(request.json)
 
@@ -156,30 +140,22 @@ def quest_put(game_id, quest_number):
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
     if game["current_quest"] != quest_number:
-        response = make_response("Vote number {} is already established !".format(quest_number), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Vote number {} is already established !".format(quest_number), 400)
 
     if "status" in quest or "votes" in quest:
-        response = make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
 
     for player_id in request.json:
         if player_id not in game["players"]:
-            response = make_response("Player {} is not in this game !".format(player_id), 400)
-            response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-            return response
+            return make_response("Player {} is not in this game !".format(player_id), 400)
 
     id_quest_number = game["quests"][quest_number]
     nb_players_to_send = db_get_value("quests", id_quest_number, "nb_players_to_send")
     if len(request.json) != nb_players_to_send:
-        response = make_response(
+        return make_response(
             "Quest number {} needs {} votes !".format(quest_number, nb_players_to_send),
             400
         )
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
 
     return jsonify(
         r.RethinkDB().table("quests").get(id_quest_number).update(

@@ -14,10 +14,14 @@ from pylib import AVALON_BLUEPRINT
 from quests import QUESTS_BLUEPRINT
 from games import GAMES_BLUEPRINT
 
+# from db_utils import db_connect
+
 APP = Flask(__name__)
 APP.register_blueprint(AVALON_BLUEPRINT)
 APP.register_blueprint(GAMES_BLUEPRINT)
 APP.register_blueprint(QUESTS_BLUEPRINT)
+
+# APP.before_first_request(db_connect)
 
 
 if __name__ == '__main__':
@@ -38,6 +42,8 @@ if __name__ == '__main__':
     APP.logger.addHandler(HANDLER)
 
     create_mp3()
+
+    # print(APP.before_first_request_funcs)
 
     # Start the RESTful web service used in Avalon
     APP.run(host=ARGS.host, port=ARGS.port, debug=True)

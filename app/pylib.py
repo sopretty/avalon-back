@@ -55,9 +55,7 @@ def restart_db():
 
     for table in request.json:
         if table not in ("games", "players", "quests", "users"):
-            response = make_response("Table {} should be 'games', 'players', 'quests' or 'users' !".format(table), 400)
-            response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-            return response
+            return make_response("Table {} should be 'games', 'players', 'quests' or 'users' !".format(table), 400)
 
         if table in r.RethinkDB().db('test').table_list().run():
             r.RethinkDB().table_drop(table).run()
@@ -65,9 +63,7 @@ def restart_db():
         # initialize table
         r.RethinkDB().table_create(table).run()
 
-    response = make_response("", 204)
-    response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    return response
+    return make_response("", 204)
 
 
 @AVALON_BLUEPRINT.route('/games/<string:game_id>/mp3', methods=['GET'])
@@ -118,40 +114,28 @@ def guess_merlin(game_id):
     """
 
     if len(request.json) != 1:
-        response = make_response("Only 1 vote required ('assassin') !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Only 1 vote required ('assassin') !", 400)
 
     player_id_current_game = db_get_value("games", game_id, "players")
     assassin_id = list(request.json)[0]
     vote_assassin = request.json[assassin_id]
 
     if assassin_id not in player_id_current_game:
-        response = make_response("Player {} is not in this game !".format(assassin_id), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Player {} is not in this game !".format(assassin_id), 400)
 
     if "assassin" not in r.RethinkDB().table("players").get(assassin_id).run():
-        response = make_response("Player {} is not 'assassin' !".format(assassin_id), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Player {} is not 'assassin' !".format(assassin_id), 400)
 
     if vote_assassin not in player_id_current_game:
-        response = make_response("Player {} is not in this game !".format(vote_assassin), 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Player {} is not in this game !".format(vote_assassin), 400)
 
     result = r.RethinkDB().table("games").get(game_id).run().get("result")
 
     if not result:
-        response = make_response("Game's status is not established !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Game's status is not established !", 400)
 
     if not result["status"]:
-        response = make_response("Games's status should be 'true' (ie blue team won) !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Games's status should be 'true' (ie blue team won) !", 400)
 
     result["guess_merlin_id"] = vote_assassin
     if db_get_value("players", vote_assassin, "role") == "merlin":

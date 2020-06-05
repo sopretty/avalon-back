@@ -32,11 +32,12 @@ def game_get(game_id):
     if not game_id:
         return jsonify(get_table("games"))
 
-    game = r.RethinkDB().table("games").get(game_id).run()
-    players = [r.RethinkDB().table("players").get(player_id).run() for player_id in game["players"]]
-    game["players"] = players
-
-    return jsonify(game)
+    return jsonify(
+        r.RethinkDB().table("games").get(game_id).merge(lambda game: {
+            "players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).order_by("leader_id").without("leader_id").coerce_to("array"),
+            "quests": resolve_key_id(game, "quests")
+        }).run()
+    )
 
 
 def game_put():
@@ -81,61 +82,43 @@ def game_put():
     """
 
     if set(request.json) != {"names", "roles"}:
-        response = make_response("Only 'names' and 'roles' are required !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Only 'names' and 'roles' are required !", 400)
 
     if not isinstance(request.json["names"], list) or not isinstance(request.json["roles"], list):
-        response = make_response("Both 'names' and 'roles' must be a list !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Both 'names' and 'roles' must be a list !", 400)
 
     rules = load_rules()
     min_nb_player = int(min(rules, key=int))
     max_nb_player = int(max(rules, key=int))
 
     if not min_nb_player <= len(request.json["names"]) <= max_nb_player:
-        response = make_response(
+        return make_response(
             "Player number should be between {} and {} !".format(min_nb_player, max_nb_player),
             400
         )
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
 
     if len(request.json["names"]) != len(set(request.json["names"])):
-        response = make_response("Players name should be unique !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Players name should be unique !", 400)
 
     if len(request.json["roles"]) != len(set(request.json["roles"])):
-        response = make_response("Players role should be unique !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Players role should be unique !", 400)
 
     available_roles = ("oberon", "morgan", "mordred", "perceval")  #TODO: ne devrait pas etre en dur
     for role in request.json["roles"]:
         if role not in available_roles:
-            response = make_response("Players role should be {}, {}, {} or {} !".format(*available_roles), 400)
-            response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-            return response
+            return make_response("Players role should be {}, {}, {} or {} !".format(*available_roles), 400)
 
     if "morgan" in request.json["roles"] and "perceval" not in request.json["roles"]:
-        response = make_response("'morgan' is selected but 'perceval' is not !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("'morgan' is selected but 'perceval' is not !", 400)
 
     if "perceval" in request.json["roles"] and "morgan" not in request.json["roles"]:
-        response = make_response("'perceval' is selected but 'morgan' is not !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("'perceval' is selected but 'morgan' is not !", 400)
 
     # find rules
     game_rules = rules[str(len(request.json["names"]))]
 
     if len([role for role in request.json["roles"] if role != "perceval"]) > game_rules["red"]:
-        response = make_response("Too many red roles chosen !", 400)
-        response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-        return response
+        return make_response("Too many red roles chosen !", 400)
 
     # add roles to players
     players = roles_and_players(request.json, game_rules["red"], game_rules["blue"])
@@ -156,7 +139,12 @@ def game_put():
                 "nb_quest_unsend": 0
             },
             return_changes=True
-        )["changes"][0]["new_val"].merge(lambda game: resolve_key_id(game, "players", "quests")).run()
+        )["changes"][0]["new_val"].merge(
+            lambda game: {
+            "players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).order_by("leader_id").without("leader_id").coerce_to("array"),
+            "quests": resolve_key_id(game, "quests")
+        }
+        ).run()
     )
 
 
@@ -190,7 +178,8 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                 {
                     "name": dict_names_roles["names"][ind],
                     "team": "blue",
-                    "role": role
+                    "role": role,
+                    "leader_id": ind
                 }
             )
         else:
@@ -201,7 +190,8 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                         "name": dict_names_roles["names"][ind],
                         "team": "red",
                         "role": role,
-                        "assassin": True
+                        "assassin": True,
+                        "leader_id": ind
                     }
                 )
             else:
@@ -209,7 +199,8 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                     {
                         "name": dict_names_roles["names"][ind],
                         "team": "red",
-                        "role": role
+                        "role": role,
+                        "leader_id": ind
                     }
                 )
 
