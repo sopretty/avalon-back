@@ -35,7 +35,7 @@ def game_get(game_id):
     return jsonify(
         r.RethinkDB().table("games").get(game_id).merge(lambda game: {
             "players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).order_by("leader_id").without("leader_id").coerce_to("array"),
-            "quests": resolve_key_id(game, "quests")
+            "quests": r.RethinkDB().table("quests").get_all(r.RethinkDB().args(game["quests"])).coerce_to("array")
         }).run()
     )
 
@@ -142,7 +142,7 @@ def game_put():
         )["changes"][0]["new_val"].merge(
             lambda game: {
             "players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).order_by("leader_id").without("leader_id").coerce_to("array"),
-            "quests": resolve_key_id(game, "quests")
+            "quests": r.RethinkDB().table("quests").get_all(r.RethinkDB().args(game["quests"])).coerce_to("array")
         }
         ).run()
     )
