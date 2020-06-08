@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from flask_cors import CORS
 import rethinkdb as r
 
-from db_utils import db_connect, resolve_key_id
+from db_utils import db_connect
 from pylib import get_table
 from rules import load_rules
 
