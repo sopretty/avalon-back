@@ -11,11 +11,10 @@ def db_connect():
 
 def resolve_key_id(table, list_id):
 
-    return [
-        {
-            val["id"]: val for val in list(r.RethinkDB().table(table).get_all(*list_id).run())
-        }[ident] for ident in list_id
-    ]
+    list_players = list(r.RethinkDB().table(table).get_all(*list_id).run())
+    dict_players = {dict_player["id"]: dict_player for dict_player in list_players}
+
+    return [dict_players[ident] for ident in list_id]
 
 
 def db_get_value(table, ident, key):
