@@ -145,6 +145,7 @@ def guess_merlin(game_id):
 
     return result
 
+
 @AVALON_BLUEPRINT.route('/quests', methods=['GET'])
 def get_quests():
     """

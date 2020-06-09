@@ -4,9 +4,10 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from flask_cors import CORS
 import rethinkdb as r
 
-from db_utils import db_connect
+from db_utils import db_connect, resolve_key_id
 from pylib import get_table
 from rules import load_rules
+
 
 GAMES_BLUEPRINT = Blueprint('games', __name__)
 CORS(GAMES_BLUEPRINT)
@@ -32,12 +33,15 @@ def game_get(game_id):
     if not game_id:
         return jsonify(get_table("games"))
 
-    return jsonify(
-        r.RethinkDB().table("games").get(game_id).merge(lambda game: {
-            "players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).order_by("leader_id").without("leader_id").coerce_to("array"),
-            "quests": r.RethinkDB().table("quests").get_all(r.RethinkDB().args(game["quests"])).coerce_to("array")
-        }).run()
+    game = r.RethinkDB().table("games").get(game_id).run()
+    game.update(
+        {
+            "players": resolve_key_id(table="players", list_id=game["players"]),
+            "quests": resolve_key_id(table="quests", list_id=game["quests"])
+        }
     )
+
+    return jsonify(game)
 
 
 def game_put():
@@ -129,23 +133,25 @@ def game_put():
     # find quests
     list_id_quests = r.RethinkDB().table("quests").insert(game_rules["quests"]).run()["generated_keys"]
 
-    return jsonify(
-        r.RethinkDB().table("games").insert(
-            {
-                "players": list_id_players,
-                "quests": list_id_quests,
-                "current_id_player": list_id_players[choice(range(len(request.json["names"])))],
-                "current_quest": 0,
-                "nb_quest_unsend": 0
-            },
-            return_changes=True
-        )["changes"][0]["new_val"].merge(
-            lambda game: {
-            "players": r.RethinkDB().table("players").get_all(r.RethinkDB().args(game["players"])).order_by("leader_id").without("leader_id").coerce_to("array"),
-            "quests": r.RethinkDB().table("quests").get_all(r.RethinkDB().args(game["quests"])).coerce_to("array")
+    inserted_game = r.RethinkDB().table("games").insert(
+        {
+            "players": list_id_players,
+            "quests": list_id_quests,
+            "current_id_player": list_id_players[choice(range(len(request.json["names"])))],
+            "current_quest": 0,
+            "nb_quest_unsend": 0
+        },
+        return_changes=True
+    )["changes"][0]["new_val"].run()
+
+    inserted_game.update(
+        {
+            "players": resolve_key_id(table="players", list_id=inserted_game["players"]),
+            "quests": resolve_key_id(table="quests", list_id=inserted_game["quests"])
         }
-        ).run()
     )
+
+    return jsonify(inserted_game)
 
 
 def roles_and_players(dict_names_roles, max_red, max_blue):
@@ -178,8 +184,7 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                 {
                     "name": dict_names_roles["names"][ind],
                     "team": "blue",
-                    "role": role,
-                    "leader_id": ind
+                    "role": role
                 }
             )
         else:
@@ -190,8 +195,7 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                         "name": dict_names_roles["names"][ind],
                         "team": "red",
                         "role": role,
-                        "assassin": True,
-                        "leader_id": ind
+                        "assassin": True
                     }
                 )
             else:
@@ -199,8 +203,7 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
                     {
                         "name": dict_names_roles["names"][ind],
                         "team": "red",
-                        "role": role,
-                        "leader_id": ind
+                        "role": role
                     }
                 )
 

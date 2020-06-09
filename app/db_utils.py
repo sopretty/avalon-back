@@ -9,6 +9,15 @@ def db_connect():
     # r.RethinkDB().connect("0.0.0.0", 28015).repl()
 
 
+def resolve_key_id(table, list_id):
+
+    return [
+        {
+            val["id"]: val for val in list(r.RethinkDB().table(table).get_all(*list_id).run())
+        }[ident] for ident in list_id
+    ]
+
+
 def db_get_value(table, ident, key):
     """This function finds the key value in the table."""
     # if table not in ("games", players"):
