@@ -34,6 +34,9 @@ def game_get(game_id):
         return jsonify(get_table("games"))
 
     game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+
     game.update(
         {
             "players": resolve_key_id(table="players", list_id=game["players"]),

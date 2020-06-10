@@ -1,5 +1,4 @@
 import rethinkdb as r
-from flask import current_app, make_response
 
 
 def db_connect():

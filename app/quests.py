@@ -68,6 +68,9 @@ def quest_delete(game_id, quest_number):
 def quest_get(game_id, quest_number):
 
     game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
     if quest["status"] is None:
@@ -79,6 +82,9 @@ def quest_get(game_id, quest_number):
 def quest_post(game_id, quest_number):
 
     game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
     if game["current_quest"] != quest_number:
@@ -137,6 +143,9 @@ def quest_post(game_id, quest_number):
 def quest_put(game_id, quest_number):
 
     game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
     if game["current_quest"] != quest_number:

@@ -129,8 +129,11 @@ def guess_merlin(game_id):
     if vote_assassin not in player_id_current_game:
         return make_response("Player {} is not in this game !".format(vote_assassin), 400)
 
-    result = r.RethinkDB().table("games").get(game_id).run().get("result")
+    game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
 
+    result = game.get("result")
     if not result:
         return make_response("Game's status is not established !", 400)
 
