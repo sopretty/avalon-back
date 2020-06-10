@@ -1,11 +1,7 @@
 """This functions are used is the RESTful web service of Avalon"""
 
-from json import load
-
 import rethinkdb as r
-from flask import Blueprint, current_app, jsonify, make_response, request, send_file
-from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Blueprint, jsonify, make_response, request, send_file
 from flask_cors import CORS
 
 from db_utils import db_connect, db_get_value, db_update_value
@@ -16,6 +12,10 @@ AVALON_BLUEPRINT = Blueprint('avalon', __name__)
 CORS(AVALON_BLUEPRINT)
 
 AVALON_BLUEPRINT.before_request(db_connect)
+
+
+# from flask_httpauth import HTTPBasicAuth
+# from werkzeug.security import generate_password_hash, check_password_hash
 
 # AUTH = HTTPBasicAuth()
 
@@ -116,22 +116,25 @@ def guess_merlin(game_id):
     if len(request.json) != 1:
         return make_response("Only 1 vote required ('assassin') !", 400)
 
-    player_id_current_game = db_get_value("games", game_id, "players")
+    game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        return make_response("Game's id {} does not exist !".format(game_id), 400)
+
     assassin_id = list(request.json)[0]
     vote_assassin = request.json[assassin_id]
 
-    if assassin_id not in player_id_current_game:
+    if assassin_id not in game["players"]:
         return make_response("Player {} is not in this game !".format(assassin_id), 400)
 
     if "assassin" not in r.RethinkDB().table("players").get(assassin_id).run():
         return make_response("Player {} is not 'assassin' !".format(assassin_id), 400)
 
-    if vote_assassin not in player_id_current_game:
+    if vote_assassin not in game["players"]:
         return make_response("Player {} is not in this game !".format(vote_assassin), 400)
 
     game = r.RethinkDB().table("games").get(game_id).run()
     if not game:
-        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+        return make_response("Game's id {} does not exist !".format(game_id), 400)
 
     result = game.get("result")
     if not result:
@@ -144,9 +147,8 @@ def guess_merlin(game_id):
     if db_get_value("players", vote_assassin, "role") == "merlin":
         result["status"] = False
 
-    db_update_value("games", game_id, "result", result)
-
-    return result
+    return r.RethinkDB().table("games").get(game_id).update(
+        {"result": result}, return_changes=True)["changes"][0]["new_val"].run()
 
 
 @AVALON_BLUEPRINT.route('/quests', methods=['GET'])

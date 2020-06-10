@@ -1,6 +1,6 @@
 from random import shuffle
 
-from flask import Blueprint, jsonify, make_response, request, current_app
+from flask import Blueprint, jsonify, make_response, request
 from flask_cors import CORS
 import rethinkdb as r
 
@@ -60,16 +60,15 @@ def quest_delete(game_id, quest_number):
 
     id_quest_number = db_get_value("games", game_id, "quests")[quest_number]
 
-    r.RethinkDB().table("quests").get(id_quest_number).replace(r.RethinkDB().row.without("votes", "status")).run()
-
-    return make_response("", 204)
+    return r.RethinkDB().table("quests").get(id_quest_number).replace(
+        r.RethinkDB().row.without("votes", "status"), return_changes=True)["changes"][0]["new_val"].run()
 
 
 def quest_get(game_id, quest_number):
 
     game = r.RethinkDB().table("games").get(game_id).run()
     if not game:
-        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+        return make_response("Game's id {} does not exist !".format(game_id), 400)
 
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
@@ -83,7 +82,7 @@ def quest_post(game_id, quest_number):
 
     game = r.RethinkDB().table("games").get(game_id).run()
     if not game:
-        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+        return make_response("Game's id {} does not exist !".format(game_id), 400)
 
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
@@ -114,7 +113,7 @@ def quest_post(game_id, quest_number):
     if not list_vote.count(None):
         quest["status"] = not list_vote.count(False) >= quest["nb_votes_to_fail"]
         game["current_id_player"] = game["players"][
-            game["players"].index(game["current_id_player"]) + 1 % len(game["players"])
+            (game["players"].index(game["current_id_player"]) + 1) % len(game["players"])
         ]
         game["nb_quest_unsend"] = 0
         game["current_quest"] = game["current_quest"] + 1
@@ -144,7 +143,7 @@ def quest_put(game_id, quest_number):
 
     game = r.RethinkDB().table("games").get(game_id).run()
     if not game:
-        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+        return make_response("Game's id {} does not exist !".format(game_id), 400)
 
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 

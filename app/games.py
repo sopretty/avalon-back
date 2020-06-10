@@ -1,6 +1,6 @@
 from random import shuffle, choice
 
-from flask import Blueprint, jsonify, make_response, request, current_app
+from flask import Blueprint, jsonify, make_response, request
 from flask_cors import CORS
 import rethinkdb as r
 
@@ -35,7 +35,7 @@ def game_get(game_id):
 
     game = r.RethinkDB().table("games").get(game_id).run()
     if not game:
-        return make_response("game_id {} does not exist in table 'games'".format(game_id), 400)
+        return make_response("Game's id {} does not exist !".format(game_id), 400)
 
     game.update(
         {
@@ -182,32 +182,18 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
     bool_assassin = True
     list_players = []
     for ind, role in enumerate(list_roles):
-        if role in ["merlin", "perceval", "blue"]:
-            list_players.append(
-                {
-                    "name": dict_names_roles["names"][ind],
-                    "team": "blue",
-                    "role": role
-                }
-            )
-        else:
+        player = {
+            "name": dict_names_roles["names"][ind],
+            "role": role,
+            "team": "blue"
+        }
+
+        if role not in ("merlin", "perceval", "blue"):
+            player["team"]: "red"
             if bool_assassin:
                 bool_assassin = False
-                list_players.append(
-                    {
-                        "name": dict_names_roles["names"][ind],
-                        "team": "red",
-                        "role": role,
-                        "assassin": True
-                    }
-                )
-            else:
-                list_players.append(
-                    {
-                        "name": dict_names_roles["names"][ind],
-                        "team": "red",
-                        "role": role
-                    }
-                )
+                player["assassin"] = True
+
+        list_players.append(player)
 
     return list_players

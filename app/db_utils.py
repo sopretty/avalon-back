@@ -4,8 +4,8 @@ import rethinkdb as r
 def db_connect():
     """This function opens the connection to the database."""
 
-    r.RethinkDB().connect("rethinkdb", 28015).repl()
-    # r.RethinkDB().connect("0.0.0.0", 28015).repl()
+    r.RethinkDB().connect("rethinkdb", 28015)
+    # r.RethinkDB().connect("0.0.0.0", 28015)
 
 
 def resolve_key_id(table, list_id):
@@ -18,26 +18,6 @@ def resolve_key_id(table, list_id):
 
 def db_get_value(table, ident, key):
     """This function finds the key value in the table."""
-    # if table not in ("games", players"):
-    #     response = make_response("Table should be 'games', 'players' or 'rules' !", 400)
-    #     response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    #     return response
-
-    # response = make_response(str(list(r.RethinkDB().table(table).get_all(ident).run())), 400)
-    # response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    # return response
-
-    # if not list(r.RethinkDB().table(table).get_all(ident).run()):
-    #     response = make_response("Game {} doesn't exist !".format(ident), 400)
-    #     response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    #     return response
-
-    # try:
-    #     return r.RethinkDB().table(table).get(ident)[key].run()
-    # except
-    #     response = make_response("Game {} doesn't exist !".format(ident), 400)
-    #     response.mimetype = current_app.config["JSONIFY_MIMETYPE"]
-    #     return response
 
     return r.RethinkDB().table(table).get(ident)[key].run()
 
