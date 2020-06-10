@@ -4,8 +4,8 @@ import rethinkdb as r
 def db_connect():
     """This function opens the connection to the database."""
 
-    r.RethinkDB().connect("rethinkdb", 28015)
-    # r.RethinkDB().connect("0.0.0.0", 28015)
+    r.RethinkDB().connect("rethinkdb", 28015).repl()
+    # r.RethinkDB().connect("0.0.0.0", 28015).repl()
 
 
 def resolve_key_id(table, list_id):
