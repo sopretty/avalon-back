@@ -143,12 +143,15 @@ def guess_merlin(game_id):
     if not result["status"]:
         return make_response("Games's status should be 'true' (ie blue team won) !", 400)
 
+    if "guess_merlin_id" in result:
+        return make_response("Merlin already chosen !", 400)
+
     result["guess_merlin_id"] = vote_assassin
     if db_get_value("players", vote_assassin, "role") == "merlin":
         result["status"] = False
 
-    return r.RethinkDB().table("games").get(game_id).update(
-        {"result": result}, return_changes=True)["changes"][0]["new_val"].run()
+    return jsonify(r.RethinkDB().table("games").get(game_id).update(
+        {"result": result}, return_changes=True)["changes"][0]["new_val"].run())
 
 
 @AVALON_BLUEPRINT.route('/quests', methods=['GET'])
