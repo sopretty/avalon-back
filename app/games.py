@@ -189,7 +189,7 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
         }
 
         if role not in ("merlin", "perceval", "blue"):
-            player["team"]: "red"
+            player["team"] = "red"
             if bool_assassin:
                 bool_assassin = False
                 player["assassin"] = True

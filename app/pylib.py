@@ -4,7 +4,7 @@ import rethinkdb as r
 from flask import Blueprint, jsonify, make_response, request, send_file
 from flask_cors import CORS
 
-from db_utils import db_connect, db_get_value, db_update_value
+from db_utils import db_connect, db_get_value, resolve_key_id
 from rules import load_rules
 
 
@@ -150,8 +150,19 @@ def guess_merlin(game_id):
     if db_get_value("players", vote_assassin, "role") == "merlin":
         result["status"] = False
 
-    return jsonify(r.RethinkDB().table("games").get(game_id).update(
-        {"result": result}, return_changes=True)["changes"][0]["new_val"].run())
+    updated_game = r.RethinkDB().table("games").get(game_id).update(
+        {"result": result},
+        return_changes=True
+    )["changes"][0]["new_val"].run()
+
+    updated_game.update(
+        {
+            "players": resolve_key_id(table="players", list_id=updated_game["players"]),
+            "quests": resolve_key_id(table="quests", list_id=updated_game["quests"])
+        }
+    )
+
+    return jsonify(updated_game)
 
 
 @AVALON_BLUEPRINT.route('/quests', methods=['GET'])
