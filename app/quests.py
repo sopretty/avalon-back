@@ -39,9 +39,11 @@ def quest_unsend(game_id):
 
     if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] == 4:
         db_update_value("games", game_id, "nb_quest_unsend", db_get_value("games", game_id, "nb_quest_unsend") + 1)
-        return jsonify(r.RethinkDB().table("games").get(game_id).update(
+        r.RethinkDB().table("games").get(game_id).update(
             {"result": {"status": False}},
-            return_changes=True)["changes"][0]["new_val"].run())
+            return_changes=True)["changes"][0]["new_val"].run()
+
+        return game_get(game_id)
 
     if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] == 5:
         return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
@@ -112,11 +114,14 @@ def quest_post(game_id, quest_number):
     if len(request.json) != 1:
         return make_response("Only one vote allowed !", 400)
 
-    if list(request.json)[0] not in db_get_value("games", game_id, "players"):
+    if list(request.json)[0] not in list(quest["votes"]):
         return make_response(
             "Player {} is not allowed to vote !".format(list(request.json)[0]),
             400
         )
+
+    if quest["votes"][list(request.json)[0]] is not None:
+        return make_response("Player {} has already voted !".format(list(request.json)[0]), 400)
 
     if not isinstance(list(request.json.values())[0], bool):
         return make_response("Vote should be a boolean !", 400)
@@ -131,6 +136,9 @@ def quest_post(game_id, quest_number):
         ]
         game["nb_quest_unsend"] = 0
         game["current_quest"] = game["current_quest"] + 1
+
+    if len(quest["votes"]) != quest["nb_players_to_send"]:
+        r.RethinkDB().table("quests").get(game["quests"][quest_number]).update({"votes": None}).run()
 
     quest_replace = r.RethinkDB().table("quests").get(game["quests"][quest_number]).replace(
         quest,
@@ -170,7 +178,7 @@ def quest_put(game_id, quest_number):
     if game["current_quest"] != quest_number:
         return make_response("Vote number {} is already established !".format(quest_number), 400)
 
-    if "status" in quest or "votes" in quest:
+    if ("status" in quest or "votes" in quest) and quest["status"] != None:
         return make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
 
     if game["nb_quest_unsend"] == 5:
@@ -187,6 +195,9 @@ def quest_put(game_id, quest_number):
             "Quest number {} needs {} votes !".format(quest_number, nb_players_to_send),
             400
         )
+
+    if "status" in quest:
+        r.RethinkDB().table("quests").get(id_quest_number).update({"votes": None}).run()
 
     return jsonify(
         r.RethinkDB().table("quests").get(id_quest_number).update(
