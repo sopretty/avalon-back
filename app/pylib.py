@@ -120,6 +120,9 @@ def guess_merlin(game_id):
     if not game:
         return make_response("Game's id {} does not exist !".format(game_id), 400)
 
+    if game["nb_quest_unsend"] == 5:
+        return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
+
     assassin_id = list(request.json)[0]
     vote_assassin = request.json[assassin_id]
 

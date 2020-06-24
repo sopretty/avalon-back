@@ -107,6 +107,9 @@ def game_put():
     if len(request.json["names"]) != len(set(request.json["names"])):
         return make_response("Players name should be unique !", 400)
 
+    if [player for player in request.json["names"] if (player.isspace() or player == "")]:
+        return make_response("Players' name cannot be empty !", 400)
+
     if len(request.json["roles"]) != len(set(request.json["roles"])):
         return make_response("Players role should be unique !", 400)
 

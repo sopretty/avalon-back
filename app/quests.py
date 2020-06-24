@@ -31,12 +31,20 @@ def quest_unsend(game_id):
         - response example: board
     """
 
-    update_current_id_player(game_id)
+    if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] < 4:
+        update_current_id_player(game_id)
+        db_update_value("games", game_id, "nb_quest_unsend", db_get_value("games", game_id, "nb_quest_unsend") + 1)
 
-    # update nb_quest_unsend
-    db_update_value("games", game_id, "nb_quest_unsend", db_get_value("games", game_id, "nb_quest_unsend") + 1)
+        return game_get(game_id)
 
-    return game_get(game_id)
+    if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] == 4:
+        db_update_value("games", game_id, "nb_quest_unsend", db_get_value("games", game_id, "nb_quest_unsend") + 1)
+        return jsonify(r.RethinkDB().table("games").get(game_id).update(
+            {"result": {"status": False}},
+            return_changes=True)["changes"][0]["new_val"].run())
+
+    if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] == 5:
+        return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
 
 
 @QUESTS_BLUEPRINT.route("/games/<string:game_id>/quests/<int:quest_number>", methods=["DELETE", "GET", "POST", "PUT"])
@@ -85,6 +93,12 @@ def quest_post(game_id, quest_number):
         return make_response("Game's id {} does not exist !".format(game_id), 400)
 
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
+
+    if game["nb_quest_unsend"] == 5:
+        return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
+
+    if "result" in game:
+        return make_response("Game is over !", 400)
 
     if game["current_quest"] != quest_number:
         return make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
@@ -147,11 +161,20 @@ def quest_put(game_id, quest_number):
 
     quest = r.RethinkDB().table("quests").get(game["quests"][quest_number]).run()
 
+    if game["nb_quest_unsend"] == 5:
+        return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
+
+    if "result" in game:
+        return make_response("Game is over !", 400)
+
     if game["current_quest"] != quest_number:
         return make_response("Vote number {} is already established !".format(quest_number), 400)
 
     if "status" in quest or "votes" in quest:
         return make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
+
+    if game["nb_quest_unsend"] == 5:
+        return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
 
     for player_id in request.json:
         if player_id not in game["players"]:
