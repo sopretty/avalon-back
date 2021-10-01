@@ -1,6 +1,13 @@
-from json import load
+import json
+import importlib.resources as pkg_resources
+
+from . import resources
 
 
-def load_rules():
-    with open("resources/rules.json", "r") as infile:
-        return load(infile)
+def get_rules():
+
+    with pkg_resources.path(resources, "rules.json") as rules_path:
+        with open(rules_path, "r") as infile:
+            rules = json.load(infile)
+
+    return rules

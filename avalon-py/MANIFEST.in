@@ -1,0 +1,5 @@
+include *.txt *.md *.rst
+recursive-include docs *.txt *.md *.rst *.html
+recursive-include test/resources/ *
+recursive-include src/avalon/resources/ *
+
