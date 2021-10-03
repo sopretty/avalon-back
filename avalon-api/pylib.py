@@ -4,8 +4,9 @@ import rethinkdb as r
 from flask import Blueprint, jsonify, make_response, request, send_file
 from flask_cors import CORS
 
-from avalon.db_utils import db_connect, db_get_table, db_get_value, resolve_key_id, restart_db
+from avalon.db_utils import db_connect, db_get_game, db_get_table, db_get_value, resolve_key_id, restart_db
 from avalon.exception import AvalonError
+from avalon.games import game_put
 from avalon.mp3 import get_mp3_roles_path
 from avalon.rules import get_rules
 
@@ -102,17 +103,12 @@ def get_players():
         - method: GET
         - route: /<table_name> (table_name is games and players)
     """
-    return jsonify(db_get_table(table_name="players"))
-
-
-def get_table(name_table):
-
     try:
-        table = db_get_table(name_table=name_table)
+        table_players = db_get_table(table_name="players")
     except AvalonError as error:
         raise HTTPError(str(error), status_code=400) from error
 
-    return jsonify(table)
+    return jsonify(table_players)
 
 
 @AVALON_BLUEPRINT.route('/games/<string:game_id>/guess_merlin', methods=['POST'])
@@ -182,4 +178,29 @@ def get_quests():
         - method: GET
         - route: /<table_name> (table_name is games and players)
     """
-    return jsonify(db_get_table(table_name="quests"))
+    try:
+        table_quests = db_get_table(table_name="quests")
+    except AvalonError as error:
+        raise HTTPError(str(error), status_code=400) from error
+
+    return jsonify(table_quests)
+
+
+@AVALON_BLUEPRINT.route("/games/<string:game_id>", methods=["GET", "PUT"])
+@AVALON_BLUEPRINT.route("/games", methods=["GET", "PUT"])
+def games(game_id=None):
+    """list player_id."""
+
+    if request.method == "GET":
+        try:
+            game = db_get_game(game_id=game_id)
+        except AvalonError as error:
+            raise HTTPError(str(error), status_code=400) from error
+
+    if request.method == "PUT":
+        try:
+            game = game_put(payload=request.json)
+        except AvalonError as error:
+            raise HTTPError(str(error), status_code=400) from error
+
+    return jsonify(game)

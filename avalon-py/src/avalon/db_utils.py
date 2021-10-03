@@ -19,9 +19,23 @@ def resolve_key_id(table, list_id):
 
 
 def db_get_game(game_id):
-    """This function return the table associated to the current game."""
+    """This function visualize the game of the <game_id>"""
 
-    return None
+    if not game_id:
+        return db_get_table(table_name="games")
+
+    game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        raise AvalonError("Game's id {} does not exist !".format(game_id))
+
+    game.update(
+        {
+            "players": resolve_key_id(table="players", list_id=game["players"]),
+            "quests": resolve_key_id(table="quests", list_id=game["quests"])
+        }
+    )
+
+    return game
 
 
 def db_get_table(table_name):

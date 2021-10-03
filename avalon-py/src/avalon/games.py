@@ -1,52 +1,13 @@
 from random import shuffle, choice
 
-from flask import Blueprint, jsonify, make_response, request
-from flask_cors import CORS
 import rethinkdb as r
 
-from avalon.db_utils import db_connect, db_get_table, resolve_key_id
+from avalon.db_utils import resolve_key_id
+from avalon.exception import AvalonError
 from avalon.rules import get_rules
 
 
-GAMES_BLUEPRINT = Blueprint("games", __name__)
-CORS(GAMES_BLUEPRINT)
-
-GAMES_BLUEPRINT.before_request(db_connect)
-
-
-@GAMES_BLUEPRINT.route("/games/<string:game_id>", methods=["GET", "PUT"])
-@GAMES_BLUEPRINT.route("/games", methods=["GET", "PUT"])
-def games(game_id=None):
-    """list player_id."""
-
-    if request.method == "GET":
-        return game_get(game_id)
-
-    if request.method == "PUT":
-        return game_put()
-
-
-def game_get(game_id):
-    """This function visualize the game of the <game_id>"""
-
-    if not game_id:
-        return jsonify(db_get_table(table_name="games"))
-
-    game = r.RethinkDB().table("games").get(game_id).run()
-    if not game:
-        return make_response("Game's id {} does not exist !".format(game_id), 400)
-
-    game.update(
-        {
-            "players": resolve_key_id(table="players", list_id=game["players"]),
-            "quests": resolve_key_id(table="quests", list_id=game["quests"])
-        }
-    )
-
-    return jsonify(game)
-
-
-def game_put():
+def game_put(payload):
     """
     This function adds rules and roles to players randomly.
         - method: PUT
@@ -87,50 +48,48 @@ def game_put():
                             }
     """
 
-    if set(request.json) != {"names", "roles"}:
-        return make_response("Only 'names' and 'roles' are required !", 400)
 
-    if not isinstance(request.json["names"], list) or not isinstance(request.json["roles"], list):
-        return make_response("Both 'names' and 'roles' must be a list !", 400)
+    if set(payload) != {"names", "roles"}:
+        raise AvalonError("Only 'names' and 'roles' are required!")
+
+    if not isinstance(payload["names"], list) or not isinstance(payload["roles"], list):
+        raise AvalonError("Both 'names' and 'roles' must be a list!")
 
     rules = get_rules()
     min_nb_player = int(min(rules, key=int))
     max_nb_player = int(max(rules, key=int))
 
-    if not min_nb_player <= len(request.json["names"]) <= max_nb_player:
-        return make_response(
-            "Player number should be between {} and {} !".format(min_nb_player, max_nb_player),
-            400
-        )
+    if not min_nb_player <= len(payload["names"]) <= max_nb_player:
+        raise AvalonError("Player number should be between {} and {}!".format(min_nb_player, max_nb_player))
 
-    if len(request.json["names"]) != len(set(request.json["names"])):
-        return make_response("Players name should be unique !", 400)
+    if len(payload["names"]) != len(set(payload["names"])):
+        raise AvalonError("Players name should be unique!")
 
-    if [player for player in request.json["names"] if (player.isspace() or player == "")]:
-        return make_response("Players' name cannot be empty !", 400)
+    if [player for player in payload["names"] if (player.isspace() or player == "")]:
+        raise AvalonError("Players' name cannot be empty!")
 
-    if len(request.json["roles"]) != len(set(request.json["roles"])):
-        return make_response("Players role should be unique !", 400)
+    if len(payload["roles"]) != len(set(payload["roles"])):
+        raise AvalonError("Players role should be unique!")
 
     available_roles = ("oberon", "morgan", "mordred", "perceval")  #TODO: ne devrait pas etre en dur
-    for role in request.json["roles"]:
+    for role in payload["roles"]:
         if role not in available_roles:
-            return make_response("Players role should be {}, {}, {} or {} !".format(*available_roles), 400)
+            raise AvalonError("Players role should be {}, {}, {} or {}!".format(*available_roles))
 
-    if "morgan" in request.json["roles"] and "perceval" not in request.json["roles"]:
-        return make_response("'morgan' is selected but 'perceval' is not !", 400)
+    if "morgan" in payload["roles"] and "perceval" not in payload["roles"]:
+        raise AvalonError("'morgan' is selected but 'perceval' is not!")
 
-    if "perceval" in request.json["roles"] and "morgan" not in request.json["roles"]:
-        return make_response("'perceval' is selected but 'morgan' is not !", 400)
+    if "perceval" in payload["roles"] and "morgan" not in payload["roles"]:
+        raise AvalonError("'perceval' is selected but 'morgan' is not!")
 
     # find rules
-    game_rules = rules[str(len(request.json["names"]))]
+    game_rules = rules[str(len(payload["names"]))]
 
-    if len([role for role in request.json["roles"] if role != "perceval"]) > game_rules["red"]:
-        return make_response("Too many red roles chosen !", 400)
+    if len([role for role in payload["roles"] if role != "perceval"]) > game_rules["red"]:
+        raise AvalonError("Too many red roles chosen!")
 
     # add roles to players
-    players = roles_and_players(request.json, game_rules["red"], game_rules["blue"])
+    players = roles_and_players(payload, game_rules["red"], game_rules["blue"])
 
     # find players
     list_id_players = r.RethinkDB().table("players").insert(players).run()["generated_keys"]
@@ -142,7 +101,7 @@ def game_put():
         {
             "players": list_id_players,
             "quests": list_id_quests,
-            "current_id_player": list_id_players[choice(range(len(request.json["names"])))],
+            "current_id_player": list_id_players[choice(range(len(payload["names"])))],
             "current_quest": 0,
             "nb_quest_unsend": 0
         },
@@ -156,7 +115,7 @@ def game_put():
         }
     )
 
-    return jsonify(inserted_game)
+    return inserted_game
 
 
 def roles_and_players(dict_names_roles, max_red, max_blue):

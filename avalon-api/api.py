@@ -10,7 +10,6 @@ from avalon.mp3 import create_mp3
 from api_utils import HTTPError
 from pylib import AVALON_BLUEPRINT
 from quests import QUESTS_BLUEPRINT
-from games import GAMES_BLUEPRINT
 
 # from db_utils import db_connect
 
@@ -18,7 +17,6 @@ from games import GAMES_BLUEPRINT
 APP = Flask(__name__)
 
 APP.register_blueprint(AVALON_BLUEPRINT)
-APP.register_blueprint(GAMES_BLUEPRINT)
 APP.register_blueprint(QUESTS_BLUEPRINT)
 # APP.before_first_request(db_connect)
 
