@@ -21,6 +21,3 @@ def get_rules():
         raise AvalonError("File '{}' can't be decoded!".format(filename))
 
     return rules
-
-if __name__ == '__main__':
-    print(get_rules())

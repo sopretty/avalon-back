@@ -2,9 +2,11 @@ from flask import Blueprint, jsonify, make_response, request
 from flask_cors import CORS
 import rethinkdb as r
 
-from avalon.db_utils import db_connect, db_get_value, db_update_value
+from avalon.db_utils import db_connect, db_get_value
+from avalon.exception import AvalonError
+from avalon.quests import quest_unsend
 
-from games import game_get
+from api_utils import HTTPError
 
 
 QUESTS_BLUEPRINT = Blueprint("quests", __name__)
@@ -13,45 +15,24 @@ CORS(QUESTS_BLUEPRINT)
 QUESTS_BLUEPRINT.before_request(db_connect)
 
 
-def update_current_id_player(game_id):
-    """This function update 'current_id_player' of the game game_id."""
-
-    list_id_players = db_get_value("games", game_id, "players")
-    current_ind_player = list_id_players.index(db_get_value("games", game_id, "current_id_player"))
-    next_ind_player = (current_ind_player + 1) % len(list_id_players)
-    db_update_value("games", game_id, "current_id_player", list_id_players[next_ind_player])
-
-
 @QUESTS_BLUEPRINT.route("/games/<string:game_id>/quest_unsend", methods=["POST"])
-def quest_unsend(game_id):
+def post_quest_unsend(game_id):
     """This function sends new quest of the game <game_id>.
         - method: POST
         - route: /<game_id>/quest_unsend
         - payload example: None
         - response example: board
     """
+    try:
+        game_updated = quest_unsend(game_id=game_id)
+    except AvalonError as error:
+        raise HTTPError(str(error), status_code=400) from error
 
-    if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] < 4:
-        update_current_id_player(game_id)
-        db_update_value("games", game_id, "nb_quest_unsend", db_get_value("games", game_id, "nb_quest_unsend") + 1)
-
-        return game_get(game_id)
-
-    if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] == 4:
-        db_update_value("games", game_id, "nb_quest_unsend", db_get_value("games", game_id, "nb_quest_unsend") + 1)
-        r.RethinkDB().table("games").get(game_id).update(
-            {"result": {"status": False}},
-            return_changes=True)["changes"][0]["new_val"].run()
-
-        return game_get(game_id)
-
-    if r.RethinkDB().table("games").get(game_id).run()["nb_quest_unsend"] == 5:
-        return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
+    return jsonify(game_updated)
 
 
 @QUESTS_BLUEPRINT.route("/games/<string:game_id>/quests/<int:quest_number>", methods=["DELETE", "GET", "POST", "PUT"])
 def quests_(game_id, quest_number):
-    """list player_id."""
 
     if request.method == "DELETE":
         return quest_delete(game_id, quest_number)
