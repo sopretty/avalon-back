@@ -4,7 +4,7 @@ import rethinkdb as r
 from flask import Blueprint, jsonify, make_response, request, send_file
 from flask_cors import CORS
 
-from avalon.db_utils import db_connect, db_get_value, resolve_key_id, restart_db
+from avalon.db_utils import db_connect, db_get_table, db_get_value, resolve_key_id, restart_db
 from avalon.exception import AvalonError
 from avalon.mp3 import get_mp3_roles_path
 from avalon.rules import get_rules
@@ -102,11 +102,17 @@ def get_players():
         - method: GET
         - route: /<table_name> (table_name is games and players)
     """
-    return jsonify(get_table("players"))
+    return jsonify(db_get_table(table_name="players"))
 
 
-def get_table(table):
-    return list(r.RethinkDB().table(table).run())
+def get_table(name_table):
+
+    try:
+        table = db_get_table(name_table=name_table)
+    except AvalonError as error:
+        raise HTTPError(str(error), status_code=400) from error
+
+    return jsonify(table)
 
 
 @AVALON_BLUEPRINT.route('/games/<string:game_id>/guess_merlin', methods=['POST'])
@@ -176,4 +182,4 @@ def get_quests():
         - method: GET
         - route: /<table_name> (table_name is games and players)
     """
-    return jsonify(get_table("quests"))
+    return jsonify(db_get_table(table_name="quests"))

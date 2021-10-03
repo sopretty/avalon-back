@@ -18,6 +18,18 @@ def resolve_key_id(table, list_id):
     return [dict_players[ident] for ident in list_id]
 
 
+def db_get_game(game_id):
+    """This function return the table associated to the current game."""
+
+    return None
+
+
+def db_get_table(table_name):
+    """This function return the table associated to the current game."""
+
+    return list(r.RethinkDB().table(table_name).run())
+
+
 def db_get_value(table, ident, key):
     """This function finds the key value in the table."""
 

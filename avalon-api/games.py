@@ -4,10 +4,8 @@ from flask import Blueprint, jsonify, make_response, request
 from flask_cors import CORS
 import rethinkdb as r
 
-from avalon.db_utils import db_connect, resolve_key_id
+from avalon.db_utils import db_connect, db_get_table, resolve_key_id
 from avalon.rules import get_rules
-
-from pylib import get_table
 
 
 GAMES_BLUEPRINT = Blueprint("games", __name__)
@@ -32,7 +30,7 @@ def game_get(game_id):
     """This function visualize the game of the <game_id>"""
 
     if not game_id:
-        return jsonify(get_table("games"))
+        return jsonify(db_get_table(table_name="games"))
 
     game = r.RethinkDB().table("games").get(game_id).run()
     if not game:
