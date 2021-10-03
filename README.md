@@ -7,7 +7,7 @@
   - Initialize databases (3 tables)
   ```bash
        - method: PUT
-       - route: /retart_db
+       - route: /restart_db
        - payload example: {
                               "table1": "rules",
                               "table2": "games",

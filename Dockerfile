@@ -19,10 +19,11 @@ RUN /root/miniconda3/bin/conda install pip && \
 # installation of dependencies
 RUN apt-get -y update && apt-get install -y unzip gfortran openssh-server ffmpeg
 
-COPY app /app
-RUN /root/miniconda3/bin/pip install -r app/requirements/requirements.txt
-WORKDIR app
-CMD ["sh", "-c", "/root/miniconda3/bin/python app.py"]
+COPY pip.conf /etc/pip.conf
+COPY avalon-api /avalon-api
+RUN /root/miniconda3/bin/pip install -r avalon-api/requirements/requirements.txt
+WORKDIR avalon-api
+CMD ["sh", "-c", "/root/miniconda3/bin/python api.py"]
 
 
 #ENV WEBSERVICEHOST 0.0.0.0

@@ -1,13 +1,13 @@
-from random import shuffle
-
 from flask import Blueprint, jsonify, make_response, request
 from flask_cors import CORS
 import rethinkdb as r
 
-from db_utils import db_connect, db_get_value, db_update_value
+from avalon.db_utils import db_connect, db_get_value, db_update_value
+
 from games import game_get
 
-QUESTS_BLUEPRINT = Blueprint('quests', __name__)
+
+QUESTS_BLUEPRINT = Blueprint("quests", __name__)
 CORS(QUESTS_BLUEPRINT)
 
 QUESTS_BLUEPRINT.before_request(db_connect)
@@ -178,7 +178,7 @@ def quest_put(game_id, quest_number):
     if game["current_quest"] != quest_number:
         return make_response("Vote number {} is already established !".format(quest_number), 400)
 
-    if ("status" in quest or "votes" in quest) and quest["status"] != None:
+    if ("status" in quest or "votes" in quest) and quest["status"] is not None:
         return make_response("Only vote number {} is allowed !".format(game["current_quest"]), 400)
 
     if game["nb_quest_unsend"] == 5:

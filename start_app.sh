@@ -1,4 +1,4 @@
 #!/bin/bash
-docker build -t avalon-pkg .
+docker build --no-cache -t avalon-pkg .
 docker-compose up -d
-#docker logs -f avalonapp_api_1
+docker logs -f avalon-back_api_1

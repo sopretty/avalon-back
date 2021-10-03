@@ -4,8 +4,12 @@ import rethinkdb as r
 from flask import Blueprint, jsonify, make_response, request, send_file
 from flask_cors import CORS
 
-from db_utils import db_connect, db_get_value, resolve_key_id
-from rules import load_rules
+from avalon.db_utils import db_connect, db_get_value, resolve_key_id, restart_db
+from avalon.exception import AvalonError
+from avalon.mp3 import get_mp3_roles_path
+from avalon.rules import get_rules
+
+from api_utils import HTTPError
 
 
 AVALON_BLUEPRINT = Blueprint('avalon', __name__)
@@ -38,60 +42,57 @@ AVALON_BLUEPRINT.before_request(db_connect)
 #     return "Hello, %s!" % AUTH.username()
 
 
-@AVALON_BLUEPRINT.route('/restart_db', methods=['PUT'])
+@AVALON_BLUEPRINT.route("/restart_db", methods=["PUT"])
 #@AUTH.login_required
-def restart_db():
+def put_restart_db():
     """
     This function deletes all tables in the post request and initializes them.
         - method: PUT
-        - route: /retart_db
+        - route: /restart_db
         - payload example: [
-                               "rules",
+                               "games",
                                "players"
                                "quests",
                                "users"
                            ]
     """
+    try:
+        response_msg = restart_db(payload_tables=request.json)
+    except AvalonError as error:
+        raise HTTPError(str(error), status_code=400) from error
 
-    for table in request.json:
-        if table not in ("games", "players", "quests", "users"):
-            return make_response("Table {} should be 'games', 'players', 'quests' or 'users' !".format(table), 400)
-
-        if table in r.RethinkDB().db('test').table_list().run():
-            r.RethinkDB().table_drop(table).run()
-
-        # initialize table
-        r.RethinkDB().table_create(table).run()
-
-    return make_response("", 204)
+    return make_response(response_msg, 204)
 
 
 @AVALON_BLUEPRINT.route('/games/<string:game_id>/mp3', methods=['GET'])
-def post_mp3(game_id):
+def get_mp3(game_id):
     """This function creates the mp3file depending on roles of players.
         - method: GET
         - route: /<game_id>/mp3
         - payload example:
         - response example: response.mpga
     """
+    try:
+        mp3_roles_path = get_mp3_roles_path(game_id=game_id)
+    except AvalonError as error:
+        raise HTTPError(str(error), status_code=400) from error
 
-    # find role of each player
-    name_roles = "-".join(sorted(
-        [db_get_value("players", player_id, "role") for player_id in db_get_value("games", game_id, "players") \
-         if db_get_value("players", player_id, "role") not in ("blue", "merlin", "perceval", "red")]
-    ))
-
-    return send_file("resources/_{}.mp3".format(name_roles), attachment_filename="roles.mp3", mimetype="audio/mpeg")
+    return send_file(mp3_roles_path, attachment_filename="roles.mp3", mimetype="audio/mpeg")
 
 
 @AVALON_BLUEPRINT.route('/rules', methods=['GET'])
-def get_rules():
+def get_rules_conf():
     """
     This function visualizes a table depending on the input <table_name>.
         - method: GET
         - route: /<table_name> (table_name is games and players)
     """
-    return jsonify(load_rules())
+    try:
+        rules = get_rules()
+    except AvalonError as error:
+        raise HTTPError(str(error), status_code=400) from error
+
+    return jsonify(rules)
 
 
 @AVALON_BLUEPRINT.route('/players', methods=['GET'])

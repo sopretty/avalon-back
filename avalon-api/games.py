@@ -4,19 +4,20 @@ from flask import Blueprint, jsonify, make_response, request
 from flask_cors import CORS
 import rethinkdb as r
 
-from db_utils import db_connect, resolve_key_id
+from avalon.db_utils import db_connect, resolve_key_id
+from avalon.rules import get_rules
+
 from pylib import get_table
-from rules import load_rules
 
 
-GAMES_BLUEPRINT = Blueprint('games', __name__)
+GAMES_BLUEPRINT = Blueprint("games", __name__)
 CORS(GAMES_BLUEPRINT)
 
 GAMES_BLUEPRINT.before_request(db_connect)
 
 
-@GAMES_BLUEPRINT.route('/games/<string:game_id>', methods=["GET", "PUT"])
-@GAMES_BLUEPRINT.route('/games', methods=["GET", "PUT"])
+@GAMES_BLUEPRINT.route("/games/<string:game_id>", methods=["GET", "PUT"])
+@GAMES_BLUEPRINT.route("/games", methods=["GET", "PUT"])
 def games(game_id=None):
     """list player_id."""
 
@@ -28,7 +29,7 @@ def games(game_id=None):
 
 
 def game_get(game_id):
-    """This function visualize the game of the <game_id>."""
+    """This function visualize the game of the <game_id>"""
 
     if not game_id:
         return jsonify(get_table("games"))
@@ -94,7 +95,7 @@ def game_put():
     if not isinstance(request.json["names"], list) or not isinstance(request.json["roles"], list):
         return make_response("Both 'names' and 'roles' must be a list !", 400)
 
-    rules = load_rules()
+    rules = get_rules()
     min_nb_player = int(min(rules, key=int))
     max_nb_player = int(max(rules, key=int))
 
