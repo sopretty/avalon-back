@@ -6,7 +6,7 @@ from flask_cors import CORS
 
 from avalon.db_utils import db_connect, db_get_game, db_get_table, db_get_value, resolve_key_id, restart_db
 from avalon.exception import AvalonError
-from avalon.games import game_put
+from avalon.games import game_put, game_guess_merlin
 from avalon.mp3 import get_mp3_roles_path
 from avalon.rules import get_rules
 
@@ -115,58 +115,10 @@ def get_players():
 def guess_merlin(game_id):
     """
     """
-
-    if len(request.json) != 1:
-        return make_response("Only 1 vote required ('assassin') !", 400)
-
-    game = r.RethinkDB().table("games").get(game_id).run()
-    if not game:
-        return make_response("Game's id {} does not exist !".format(game_id), 400)
-
-    if game["nb_quest_unsend"] == 5:
-        return make_response("Game is over because 5 consecutive laps have been passed : Red team won !", 400)
-
-    assassin_id = list(request.json)[0]
-    vote_assassin = request.json[assassin_id]
-
-    if assassin_id not in game["players"]:
-        return make_response("Player {} is not in this game !".format(assassin_id), 400)
-
-    if "assassin" not in r.RethinkDB().table("players").get(assassin_id).run():
-        return make_response("Player {} is not 'assassin' !".format(assassin_id), 400)
-
-    if vote_assassin not in game["players"]:
-        return make_response("Player {} is not in this game !".format(vote_assassin), 400)
-
-    game = r.RethinkDB().table("games").get(game_id).run()
-    if not game:
-        return make_response("Game's id {} does not exist !".format(game_id), 400)
-
-    result = game.get("result")
-    if not result:
-        return make_response("Game's status is not established !", 400)
-
-    if not result["status"]:
-        return make_response("Games's status should be 'true' (ie blue team won) !", 400)
-
-    if "guess_merlin_id" in result:
-        return make_response("Merlin already chosen !", 400)
-
-    result["guess_merlin_id"] = vote_assassin
-    if db_get_value("players", vote_assassin, "role") == "merlin":
-        result["status"] = False
-
-    updated_game = r.RethinkDB().table("games").get(game_id).update(
-        {"result": result},
-        return_changes=True
-    )["changes"][0]["new_val"].run()
-
-    updated_game.update(
-        {
-            "players": resolve_key_id(table="players", list_id=updated_game["players"]),
-            "quests": resolve_key_id(table="quests", list_id=updated_game["quests"])
-        }
-    )
+    try:
+        updated_game = game_guess_merlin(game_id=game_id, payload=request.json)
+    except AvalonError as error:
+        raise HTTPError(str(error), status_code=400) from error
 
     return jsonify(updated_game)
 

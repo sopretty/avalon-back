@@ -2,7 +2,7 @@ from random import shuffle, choice
 
 import rethinkdb as r
 
-from avalon.db_utils import resolve_key_id
+from avalon.db_utils import db_get_value, resolve_key_id
 from avalon.exception import AvalonError
 from avalon.rules import get_rules
 
@@ -156,3 +156,62 @@ def roles_and_players(dict_names_roles, max_red, max_blue):
         list_players.append(player)
 
     return list_players
+
+
+def game_guess_merlin(game_id, payload):
+    """
+    """
+
+    if len(payload) != 1:
+        raise AvalonError("Only 1 vote required ('assassin') !")
+
+    game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        raise AvalonError("Game's id {} does not exist !".format(game_id))
+
+    if game["nb_quest_unsend"] == 5:
+        raise AvalonError("Game is over because 5 consecutive laps have been passed : Red team won !")
+
+    assassin_id = list(payload)[0]
+    vote_assassin = payload[assassin_id]
+
+    if assassin_id not in game["players"]:
+        raise AvalonError("Player {} is not in this game !".format(assassin_id))
+
+    if "assassin" not in r.RethinkDB().table("players").get(assassin_id).run():
+        raise AvalonError("Player {} is not 'assassin' !".format(assassin_id))
+
+    if vote_assassin not in game["players"]:
+        raise AvalonError("Player {} is not in this game !".format(vote_assassin))
+
+    game = r.RethinkDB().table("games").get(game_id).run()
+    if not game:
+        raise AvalonError("Game's id {} does not exist !".format(game_id))
+
+    result = game.get("result")
+    if not result:
+        raise AvalonError("Game's status is not established !")
+
+    if not result["status"]:
+        raise AvalonError("Games's status should be 'true' (ie blue team won) !")
+
+    if "guess_merlin_id" in result:
+        raise AvalonError("Merlin already chosen !")
+
+    result["guess_merlin_id"] = vote_assassin
+    if db_get_value("players", vote_assassin, "role") == "merlin":
+        result["status"] = False
+
+    updated_game = r.RethinkDB().table("games").get(game_id).update(
+        {"result": result},
+        return_changes=True
+    )["changes"][0]["new_val"].run()
+
+    updated_game.update(
+        {
+            "players": resolve_key_id(table="players", list_id=updated_game["players"]),
+            "quests": resolve_key_id(table="quests", list_id=updated_game["quests"])
+        }
+    )
+
+    return updated_game
