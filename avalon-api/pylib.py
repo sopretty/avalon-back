@@ -13,7 +13,7 @@ from avalon.rules import get_rules
 from api_utils import HTTPError
 
 
-AVALON_BLUEPRINT = Blueprint('avalon', __name__)
+AVALON_BLUEPRINT = Blueprint("avalon", __name__)
 CORS(AVALON_BLUEPRINT)
 
 AVALON_BLUEPRINT.before_request(db_connect)
@@ -189,7 +189,6 @@ def get_quests():
 @AVALON_BLUEPRINT.route("/games/<string:game_id>", methods=["GET", "PUT"])
 @AVALON_BLUEPRINT.route("/games", methods=["GET", "PUT"])
 def games(game_id=None):
-    """list player_id."""
 
     if request.method == "GET":
         try:

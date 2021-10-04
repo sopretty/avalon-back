@@ -47,8 +47,6 @@ def game_put(payload):
                                 ]
                             }
     """
-
-
     if set(payload) != {"names", "roles"}:
         raise AvalonError("Only 'names' and 'roles' are required!")
 
