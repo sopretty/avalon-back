@@ -1,29 +1,14 @@
-FROM ubuntu:18.04
+FROM python:3.9-slim
 
 MAINTAINER Romain Thierry-Laumont "romain.121@hotmail.fr"
 
-# Python install
-RUN apt-get update -y --no-install-recommends; \
-    apt-get install -y wget python-setuptools python-pip vim htop nano; \
-    apt-get clean; \
-    rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/*
-
-RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/Miniconda3.sh; \
-    /bin/bash -b -p -f ~/Miniconda3.sh -b $HOME/Miniconda3
-
-# Install pip in miniconda
-RUN /root/miniconda3/bin/conda install pip && \
-    /root/miniconda3/bin/pip install --upgrade pip && \
-    /root/miniconda3/bin/pip install --upgrade setuptools
-
-# installation of dependencies
-RUN apt-get -y update && apt-get install -y unzip gfortran openssh-server ffmpeg
+RUN apt-get update && apt-get -y upgrade && apt-get install -y ffmpeg
 
 COPY pip.conf /etc/pip.conf
 COPY avalon-api /avalon-api
-RUN /root/miniconda3/bin/pip install -r avalon-api/requirements/requirements.txt
+RUN pip install -r avalon-api/requirements/requirements.txt
 WORKDIR avalon-api
-CMD ["sh", "-c", "/root/miniconda3/bin/python api.py"]
+CMD ["sh", "-c", "python api.py"]
 
 
 #ENV WEBSERVICEHOST 0.0.0.0
